@@ -212,12 +212,11 @@ if ($useSudo) {
     }
 }
 
-$extract = Join-Path $work 'extract'
-New-Item -ItemType Directory -Force -Path $extract | Out-Null
-& tar -xf $tarTmp -C $extract
-$status = Join-Path $extract 'var/lib/dpkg/status'
+# Pull dpkg status from the tarball without extracting device nodes (needs root).
+$status = Join-Path $work 'dpkg-status'
+& tar -xOf $tarTmp ./var/lib/dpkg/status | Set-Content -LiteralPath $status -Encoding utf8
 $resolvedPath = Join-Path $artifactsDir 'resolved-packages.txt'
-if (Test-Path -LiteralPath $status) {
+if ((Test-Path -LiteralPath $status) -and ((Get-Item -LiteralPath $status).Length -gt 0)) {
     $names = Select-String -Path $status -Pattern '^Package:\s+(.+)$' | ForEach-Object { $_.Matches.Groups[1].Value } | Sort-Object -Unique
     $names | Set-Content -LiteralPath $resolvedPath -Encoding utf8
     Write-Host "Wrote $($names.Count) resolved packages -> $resolvedPath"
@@ -225,6 +224,9 @@ if (Test-Path -LiteralPath $status) {
     if ($LASTEXITCODE -ne 0) {
         throw 'Resolved package set failed budget/exclude check.'
     }
+}
+else {
+    throw 'Could not read ./var/lib/dpkg/status from rootfs tarball.'
 }
 
 if (Test-Path -LiteralPath $OutputPath) {

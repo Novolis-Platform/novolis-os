@@ -13,9 +13,12 @@ pipewire*
 *-sdk
 dotnet-sdk*
 aspnetcore-runtime*
-gcc*
-g++*
-clang*
+# Compilers / toolchains only — not Debian meta packages like gcc-14-base (libc dep).
+gcc
+g++
+g++-*
+clang
+clang-*
 build-essential
 *-doc
 *-docs
