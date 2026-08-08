@@ -43,4 +43,4 @@ The appliance adds **cage** (single-app Wayland kiosk) and **seatd** so a QEMU V
 
 ## .NET
 
-`dotnet-runtime-10.0` only (Microsoft package feed). No SDK, no ASP.NET runtime unless a future consumer proves need.
+`dotnet-runtime-10.0` only, installed from the official .NET runtime tarball (`dotnet-install.sh`). No SDK, no ASP.NET runtime unless a future consumer proves need. Microsoft apt feeds are avoided (Debian 13+ OpenPGP policy rejects their SHA1-bound signing key).

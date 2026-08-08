@@ -133,29 +133,26 @@ New-Item -ItemType Directory -Force -Path $hookDir | Out-Null
 $setupMs = Join-Path $hookDir 'setup-microsoft.sh'
 
 if ($wantDotnet) {
+    # Install via official tarball (host curl). Microsoft apt feeds fail on Debian 13+
+    # because sqv rejects their SHA1-bound signing key (2026-02 policy).
     $msScript = @'
 #!/bin/sh
 set -eu
 root="$1"
-export DEBIAN_FRONTEND=noninteractive
-chroot "$root" apt-get update -qq
-chroot "$root" apt-get install -y -qq --no-install-recommends ca-certificates curl
-curl -fsSL https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -o "$root/tmp/packages-microsoft-prod.deb"
-chroot "$root" dpkg -i /tmp/packages-microsoft-prod.deb
-rm -f "$root/tmp/packages-microsoft-prod.deb"
-chroot "$root" apt-get update -qq
-chroot "$root" apt-get install -y -qq --no-install-recommends dotnet-runtime-10.0
-chroot "$root" apt-get purge -y -qq curl || true
-chroot "$root" apt-get autoremove -y -qq
-chroot "$root" apt-get clean
-rm -rf "$root/var/lib/apt/lists/"*
+install_sh="/tmp/novolis-dotnet-install.sh"
+curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$install_sh"
+bash "$install_sh" --channel 10.0 --runtime dotnet --install-dir "$root/usr/share/dotnet"
+ln -sfn /usr/share/dotnet/dotnet "$root/usr/bin/dotnet"
+# Smoke: runtime must resolve inside the rootfs.
+chroot "$root" /usr/bin/dotnet --list-runtimes | grep -E 'Microsoft\.NETCore\.App 10\.'
+rm -f "$install_sh"
 '@
 }
 else {
     $msScript = "#!/bin/sh`nexit 0`n"
 }
 
-Set-Content -LiteralPath $setupMs -Value $msScript -Encoding utf8NoBOM
+[System.IO.File]::WriteAllText($setupMs, ($msScript.Replace("`r`n", "`n").Replace("`r", "`n")))
 & chmod +x $setupMs
 
 $tarTmp = Join-Path $work 'rootfs.tar'

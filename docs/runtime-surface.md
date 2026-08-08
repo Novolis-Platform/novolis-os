@@ -4,7 +4,7 @@ Map of Novolis library layers to OS packages. Pure managed stacks need only the 
 
 | Layer / stack | OS packages | Manifest |
 |---------------|-------------|----------|
-| Math, Physics, Simulation, Gaming (managed) | `dotnet-runtime-10.0` | `dotnet.txt` |
+| Math, Physics, Simulation, Gaming (managed) | .NET 10 runtime tarball (`dotnet-runtime-10.0` pin) | `dotnet.txt` |
 | ICU / globalization | `libicu76` | `base.txt` |
 | TLS | `libssl3t64`, `ca-certificates`, `zlib1g` | `base.txt` |
 | Avalonia / Skia | fontconfig, freetype, X11/xcb, Wayland client, `libxkbcommon0`, fonts | `ui-graphics.txt` |

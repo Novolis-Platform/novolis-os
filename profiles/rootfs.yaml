@@ -10,5 +10,5 @@ manifests:
   - ui-graphics.txt
   - audio-alsa.txt
 omit_recommends: true
-microsoft_packages: true
+dotnet_tarball: true
 output: artifacts/novolis-os-rootfs.tar.zst

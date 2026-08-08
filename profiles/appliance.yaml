@@ -11,6 +11,6 @@ manifests:
   - audio-alsa.txt
   - appliance.txt
 omit_recommends: true
-microsoft_packages: true
+dotnet_tarball: true
 output: artifacts/novolis-os.qcow2
 rootfs_output: artifacts/novolis-os-appliance-rootfs.tar.zst
