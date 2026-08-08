@@ -28,7 +28,9 @@ jobs:
           sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates
       - name: Build rootfs
         shell: pwsh
-        run: pwsh -File "${{ github.workspace }}/scripts/Build-Rootfs.ps1"
+        run: |
+          # mmdebstrap --mode=auto may use fakechroot/unshare; keep sudo for root mode fallback tools
+          pwsh -File "${{ github.workspace }}/scripts/Build-Rootfs.ps1"
       - name: Upload rootfs
         uses: actions/upload-artifact@v4
         with:

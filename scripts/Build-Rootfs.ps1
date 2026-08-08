@@ -36,7 +36,8 @@ function Get-YamlScalar {
         [string] $Key
     )
     foreach ($line in $Lines) {
-        if ($line -match "^\s*${Key}:\s*(.+)\s*$") {
+        $clean = $line.TrimEnd("`r")
+        if ($clean -match "^\s*${Key}:\s*(.+)\s*$") {
             return $Matches[1].Trim().Trim('"').Trim("'")
         }
     }
@@ -51,15 +52,16 @@ function Get-YamlList {
     $items = [System.Collections.Generic.List[string]]::new()
     $inList = $false
     foreach ($line in $Lines) {
-        if ($line -match "^\s*${Key}:\s*$") {
+        $clean = $line.TrimEnd("`r")
+        if ($clean -match "^\s*${Key}:\s*$") {
             $inList = $true
             continue
         }
         if ($inList) {
-            if ($line -match '^\S') {
+            if ($clean -match '^\S') {
                 break
             }
-            if ($line -match '^\s*-\s+(.+)$') {
+            if ($clean -match '^\s*-\s+(.+)$') {
                 $items.Add($Matches[1].Trim().Trim('"').Trim("'"))
             }
         }
@@ -156,27 +158,34 @@ else {
 Set-Content -LiteralPath $setupMs -Value $msScript -Encoding utf8NoBOM
 & chmod +x $setupMs
 
-$includeArgs = @()
-foreach ($pkg in $aptPackages) {
-    $includeArgs += '--include=' + $pkg
-}
-
 $tarTmp = Join-Path $work 'rootfs.tar'
 Write-Host "mmdebstrap suite=$suite variant=$variant packages=$($aptPackages.Count) (+dotnet hook=$wantDotnet)"
 
-$mmArgs = @(
-    '--variant=' + $variant,
-    '--mode=auto',
-    '--aptopt=Apt::Install-Recommends "false"'
-) + $includeArgs
-
-if ($wantDotnet) {
-    $mmArgs += "--customize-hook=$setupMs"
+# Invoke via bash so aptopt quoting is not re-parsed by PowerShell.
+function ConvertTo-BashSingleQuoted {
+    param([string] $Value)
+    return "'" + ($Value -replace "'", "'\''") + "'"
 }
 
-$mmArgs += @($suite, $tarTmp)
+$bashLines = [System.Collections.Generic.List[string]]::new()
+[void]$bashLines.Add('#!/bin/bash')
+[void]$bashLines.Add('set -euo pipefail')
+$cmd = "mmdebstrap --variant=$(ConvertTo-BashSingleQuoted $variant) --mode=auto --aptopt='Apt::Install-Recommends \"false\"'"
+foreach ($pkg in $aptPackages) {
+    $cmd += " --include=$(ConvertTo-BashSingleQuoted $pkg)"
+}
+if ($wantDotnet) {
+    $cmd += " --customize-hook=$(ConvertTo-BashSingleQuoted $setupMs)"
+}
+$cmd += " $(ConvertTo-BashSingleQuoted $suite) $(ConvertTo-BashSingleQuoted $tarTmp)"
+[void]$bashLines.Add($cmd)
 
-& mmdebstrap @mmArgs
+$runner = Join-Path $work 'run-mmdebstrap.sh'
+# UTF-8 no BOM; LF newlines for bash
+[System.IO.File]::WriteAllText($runner, (($bashLines -join "`n") + "`n"))
+& chmod +x $runner
+Write-Host "Running $runner"
+& bash $runner
 if ($LASTEXITCODE -ne 0) {
     throw "mmdebstrap failed with exit $LASTEXITCODE"
 }
