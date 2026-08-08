@@ -167,14 +167,26 @@ function ConvertTo-BashSingleQuoted {
     return "'" + ($Value -replace "'", "'\''") + "'"
 }
 
+$keyring = '/usr/share/keyrings/debian-archive-keyring.gpg'
+if (-not (Test-Path -LiteralPath $keyring)) {
+    throw "Missing $keyring — install debian-archive-keyring on the build host."
+}
+
 $bashLines = [System.Collections.Generic.List[string]]::new()
 [void]$bashLines.Add('#!/bin/bash')
 [void]$bashLines.Add('set -euo pipefail')
 $aptOpt = 'Apt::Install-Recommends "false"'
 $cmdParts = [System.Collections.Generic.List[string]]::new()
+# Root mode + Debian keyring: unshare on Ubuntu hosts often lacks Debian archive keys.
+$uid = (& bash -lc 'id -u').ToString().Trim()
+$useSudo = $uid -ne '0'
+if ($useSudo) {
+    [void]$cmdParts.Add('sudo')
+}
 [void]$cmdParts.Add('mmdebstrap')
 [void]$cmdParts.Add("--variant=$(ConvertTo-BashSingleQuoted $variant)")
-[void]$cmdParts.Add('--mode=auto')
+[void]$cmdParts.Add('--mode=root')
+[void]$cmdParts.Add("--keyring=$(ConvertTo-BashSingleQuoted $keyring)")
 [void]$cmdParts.Add("--aptopt=$(ConvertTo-BashSingleQuoted $aptOpt)")
 foreach ($pkg in $aptPackages) {
     [void]$cmdParts.Add("--include=$(ConvertTo-BashSingleQuoted $pkg)")
@@ -194,6 +206,13 @@ Write-Host "Running $runner"
 & bash $runner
 if ($LASTEXITCODE -ne 0) {
     throw "mmdebstrap failed with exit $LASTEXITCODE"
+}
+
+if ($useSudo) {
+    & sudo chown -R "${uid}:${uid}" $work
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Failed to chown rootfs work directory after sudo mmdebstrap.'
+    }
 }
 
 $extract = Join-Path $work 'extract'

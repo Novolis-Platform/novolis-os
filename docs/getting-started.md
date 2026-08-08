@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Linux host (or CI) with `pwsh`, `mmdebstrap`, `apt-transport-https`, and `zstd`
+- Linux host (or CI) with `pwsh`, `mmdebstrap`, `zstd`, and `debian-archive-keyring`
 - Root or unprivileged user namespaces for `mmdebstrap`
 - Appliance builds also need `qemu-utils` (`qemu-img`) and space for a qcow2
 

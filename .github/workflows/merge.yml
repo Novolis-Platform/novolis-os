@@ -25,12 +25,10 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates
+          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring
       - name: Build rootfs
         shell: pwsh
-        run: |
-          # mmdebstrap --mode=auto may use fakechroot/unshare; keep sudo for root mode fallback tools
-          pwsh -File "${{ github.workspace }}/scripts/Build-Rootfs.ps1"
+        run: pwsh -File "${{ github.workspace }}/scripts/Build-Rootfs.ps1"
       - name: Upload rootfs
         uses: actions/upload-artifact@v4
         with:
@@ -50,7 +48,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates qemu-utils guestfs-tools
+          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring qemu-utils guestfs-tools
       - name: Build appliance
         shell: pwsh
         run: pwsh -File "${{ github.workspace }}/scripts/Build-Appliance.ps1"
