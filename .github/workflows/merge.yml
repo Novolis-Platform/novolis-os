@@ -1,0 +1,64 @@
+name: Merge
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_appliance:
+        description: Also build qcow2 appliance (needs guestfs)
+        type: boolean
+        default: false
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify package budget
+        shell: pwsh
+        run: pwsh -File "${{ github.workspace }}/scripts/Verify-PackageBudget.ps1"
+
+  rootfs:
+    needs: budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates
+      - name: Build rootfs
+        shell: pwsh
+        run: pwsh -File "${{ github.workspace }}/scripts/Build-Rootfs.ps1"
+      - name: Upload rootfs
+        uses: actions/upload-artifact@v4
+        with:
+          name: novolis-os-rootfs
+          path: |
+            artifacts/novolis-os-rootfs.tar.zst
+            artifacts/resolved-packages.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  appliance:
+    if: github.event_name == 'workflow_dispatch' && inputs.build_appliance == true
+    needs: budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates qemu-utils guestfs-tools
+      - name: Build appliance
+        shell: pwsh
+        run: pwsh -File "${{ github.workspace }}/scripts/Build-Appliance.ps1"
+      - name: Upload appliance
+        uses: actions/upload-artifact@v4
+        with:
+          name: novolis-os-appliance
+          path: |
+            artifacts/novolis-os.qcow2
+            artifacts/novolis-os-appliance-rootfs.tar.zst
+            artifacts/resolved-packages.txt
+          if-no-files-found: error
+          retention-days: 14

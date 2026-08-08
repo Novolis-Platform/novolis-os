@@ -1,0 +1,2 @@
+# Microsoft package feed (.NET 10 runtime only — no SDK).
+dotnet-runtime-10.0

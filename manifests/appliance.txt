@@ -1,0 +1,11 @@
+# Bootable appliance only (not installed into rootfs-only profile).
+linux-image-amd64
+systemd
+systemd-sysv
+dbus
+seatd
+cage
+libpam-systemd
+adduser
+passwd
+sudo

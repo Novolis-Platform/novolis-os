@@ -1,0 +1,6 @@
+{
+  "name": "novolis-os",
+  "kind": "os-image",
+  "description": "Minimal Debian-based Novolis OS runtime (.NET 10, Avalonia/Raylib UI libs, no desktop environment)",
+  "packages": []
+}

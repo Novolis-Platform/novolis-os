@@ -1,0 +1,10 @@
+artifacts/
+*.tar
+*.tar.zst
+*.qcow2
+*.raw
+*.img
+.DS_Store
+.idea/
+.vs/
+*.user

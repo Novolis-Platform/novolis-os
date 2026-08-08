@@ -1,0 +1,8 @@
+# Essential userspace (Debian). One package per line. Comments and blanks ignored.
+# Keep this list tiny — dependencies are pulled by apt; do not add "nice to have".
+ca-certificates
+tzdata
+libssl3t64
+zlib1g
+libicu76
+dash

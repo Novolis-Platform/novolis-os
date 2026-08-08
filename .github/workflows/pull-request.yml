@@ -1,0 +1,15 @@
+name: Pull request
+on:
+  pull_request:
+    branches: [main]
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify package budget
+        shell: pwsh
+        run: pwsh -File "${{ github.workspace }}/scripts/Verify-PackageBudget.ps1"
