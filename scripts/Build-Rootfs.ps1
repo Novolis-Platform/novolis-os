@@ -170,15 +170,21 @@ function ConvertTo-BashSingleQuoted {
 $bashLines = [System.Collections.Generic.List[string]]::new()
 [void]$bashLines.Add('#!/bin/bash')
 [void]$bashLines.Add('set -euo pipefail')
-$cmd = "mmdebstrap --variant=$(ConvertTo-BashSingleQuoted $variant) --mode=auto --aptopt='Apt::Install-Recommends \"false\"'"
+$aptOpt = 'Apt::Install-Recommends "false"'
+$cmdParts = [System.Collections.Generic.List[string]]::new()
+[void]$cmdParts.Add('mmdebstrap')
+[void]$cmdParts.Add("--variant=$(ConvertTo-BashSingleQuoted $variant)")
+[void]$cmdParts.Add('--mode=auto')
+[void]$cmdParts.Add("--aptopt=$(ConvertTo-BashSingleQuoted $aptOpt)")
 foreach ($pkg in $aptPackages) {
-    $cmd += " --include=$(ConvertTo-BashSingleQuoted $pkg)"
+    [void]$cmdParts.Add("--include=$(ConvertTo-BashSingleQuoted $pkg)")
 }
 if ($wantDotnet) {
-    $cmd += " --customize-hook=$(ConvertTo-BashSingleQuoted $setupMs)"
+    [void]$cmdParts.Add("--customize-hook=$(ConvertTo-BashSingleQuoted $setupMs)")
 }
-$cmd += " $(ConvertTo-BashSingleQuoted $suite) $(ConvertTo-BashSingleQuoted $tarTmp)"
-[void]$bashLines.Add($cmd)
+[void]$cmdParts.Add((ConvertTo-BashSingleQuoted $suite))
+[void]$cmdParts.Add((ConvertTo-BashSingleQuoted $tarTmp))
+[void]$bashLines.Add(($cmdParts -join ' '))
 
 $runner = Join-Path $work 'run-mmdebstrap.sh'
 # UTF-8 no BOM; LF newlines for bash
