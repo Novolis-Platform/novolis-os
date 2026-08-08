@@ -11,6 +11,7 @@ Minimal is enforced by allowlists and budgets, not slogans.
 | Profile | Artifact | Contains |
 |---------|----------|----------|
 | `rootfs` | `novolis-os-rootfs.tar.zst` | Userspace + .NET 10 runtime + UI/audio libs |
+| Podman OCI | `localhost/novolis-os:latest` | Rootfs unpacked via `Containerfile` |
 | `appliance` | `novolis-os.qcow2` | Rootfs + kernel + systemd + seatd + cage |
 
 Apps are **not** baked into the image. Install or bind-mount them separately.

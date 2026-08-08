@@ -13,3 +13,7 @@ jobs:
       - name: Verify package budget
         shell: pwsh
         run: pwsh -File "${{ github.workspace }}/scripts/Verify-PackageBudget.ps1"
+      - name: Verify package budget (bash)
+        run: |
+          chmod +x "${{ github.workspace }}/scripts/verify-package-budget.sh"
+          bash "${{ github.workspace }}/scripts/verify-package-budget.sh"

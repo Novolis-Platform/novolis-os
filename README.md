@@ -38,22 +38,24 @@ Minimalism is gated by `manifests/` allowlists and `scripts/Verify-PackageBudget
 
 | Profile | Script | Artifact |
 |---------|--------|----------|
-| Rootfs | `scripts/Build-Rootfs.ps1` | `artifacts/novolis-os-rootfs.tar.zst` |
+| Podman OCI | `scripts/Build-PodmanImage.ps1` | `localhost/novolis-os:latest` |
+| Rootfs | `scripts/Build-Rootfs.ps1` / `scripts/build-rootfs.sh` | `artifacts/novolis-os-rootfs.tar.zst` |
 | Appliance | `scripts/Build-Appliance.ps1` | `artifacts/novolis-os.qcow2` |
 
 ## Quick commands
 
 ```powershell
 pwsh -File d:\novolis\novolis-os\scripts\Verify-PackageBudget.ps1
-pwsh -File d:\novolis\novolis-os\scripts\Build-Rootfs.ps1
-pwsh -File d:\novolis\novolis-os\scripts\Build-Appliance.ps1
+pwsh -File d:\novolis\novolis-os\scripts\Build-PodmanImage.ps1
+pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1
 ```
 
-Image builds require Linux (`mmdebstrap`). On Windows, only the budget verifier runs.
+Podman builds the rootfs in a privileged Ubuntu container (works on Windows Podman Desktop). Native Linux host builds use `Build-Rootfs.ps1`.
 
 ## Docs
 
 - [Getting started](docs/getting-started.md)
+- [Podman](docs/podman.md)
 - [Design](docs/design.md)
 - [Runtime surface](docs/runtime-surface.md)
 - [Release](docs/release.md)

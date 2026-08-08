@@ -2,11 +2,9 @@
 
 ## Prerequisites
 
-- Linux host (or CI) with `pwsh`, `mmdebstrap`, `zstd`, and `debian-archive-keyring`
-- Root or unprivileged user namespaces for `mmdebstrap`
+- **Podman** (recommended on Windows and Linux) — see [podman.md](podman.md)
+- Or a Linux host with `pwsh`, `mmdebstrap`, `zstd`, and `debian-archive-keyring`
 - Appliance builds also need `qemu-utils` (`qemu-img`) and space for a qcow2
-
-Windows: run `Verify-PackageBudget.ps1` only. Image builds require Linux.
 
 ## Verify allowlists
 
@@ -14,22 +12,22 @@ Windows: run `Verify-PackageBudget.ps1` only. Image builds require Linux.
 pwsh -File d:\novolis\novolis-os\scripts\Verify-PackageBudget.ps1
 ```
 
-## Build rootfs
+## Build and run with Podman (Windows + Linux)
+
+```powershell
+pwsh -File d:\novolis\novolis-os\scripts\Build-PodmanImage.ps1
+pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1
+```
+
+Produces `localhost/novolis-os:latest` and checks for `Microsoft.NETCore.App 10.x`. Details: [podman.md](podman.md).
+
+## Build rootfs on Linux host
 
 ```powershell
 pwsh -File d:\novolis\novolis-os\scripts\Build-Rootfs.ps1
 ```
 
 Output: `d:\novolis\novolis-os\artifacts\novolis-os-rootfs.tar.zst`
-
-### Run with Podman / Docker
-
-```bash
-mkdir -p /tmp/novolis-os && tar -I zstd -xf novolis-os-rootfs.tar.zst -C /tmp/novolis-os
-podman run --rm -it -v /tmp/novolis-os:/rootfs:ro debian:trixie chroot /rootfs /bin/dash
-```
-
-Or import as an OCI rootfs per your runtime’s docs. Bind-mount a published Novolis app and run it with `/usr/bin/dotnet`.
 
 ### WSL2
 
