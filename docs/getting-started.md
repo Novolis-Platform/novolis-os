@@ -2,9 +2,9 @@
 
 ## Prerequisites
 
-- **Podman** (recommended on Windows and Linux) — see [podman.md](podman.md)
-- Or a Linux host with `pwsh`, `mmdebstrap`, `zstd`, and `debian-archive-keyring`
-- Appliance builds also need `qemu-utils` (`qemu-img`) and space for a qcow2
+- **QEMU** (`qemu-system-x86_64`) — GUI / primary path ([vm.md](vm.md))
+- **Podman** — optional console smoke ([podman.md](podman.md))
+- Or Linux with `mmdebstrap`, `zstd`, `e2fsprogs` for native builds
 
 ## Verify allowlists
 
@@ -12,34 +12,35 @@
 pwsh -File d:\novolis\novolis-os\scripts\Verify-PackageBudget.ps1
 ```
 
-## Build and run with Podman (headless / console)
+## GUI in QEMU (primary)
 
-```powershell
-pwsh -File d:\novolis\novolis-os\scripts\Build-PodmanImage.ps1
-pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1
-```
-
-Produces `localhost/novolis-os:latest` with entrypoint **HelloNovolisOs**. Good for runtime smoke — **not** for Avalonia/Raylib windows. Details: [podman.md](podman.md).
-
-## GUI in a VM (QEMU)
-
-Podman/Docker do not provide a full compositor/GPU seat for Novolis UI apps. Use the appliance:
+Single profile includes UI libraries + cage. Build once, then run:
 
 ```powershell
 pwsh -File d:\novolis\novolis-os\scripts\Build-Appliance.ps1
 pwsh -File d:\novolis\novolis-os\scripts\Run-Qemu.ps1
 ```
 
-Boots kernel-direct into **cage + HelloNovolisOsGui** (Avalonia). See [vm.md](vm.md).
+You should see the installed Avalonia app (default smoke, or whatever you published into `artifacts/app-publish`).
 
-## Build rootfs on Linux host
+Install **GeoPolity** from novolis-apps:
 
 ```powershell
-pwsh -File d:\novolis\novolis-os\scripts\Build-Rootfs.ps1
+pwsh -File d:\novolis\novolis-os\scripts\Build-Appliance.ps1 `
+  -AppProject d:\novolis\novolis-apps\src\GeoPolity\GeoPolity.csproj
+pwsh -File d:\novolis\novolis-os\scripts\Run-Qemu.ps1
 ```
 
-Output: `d:\novolis\novolis-os\artifacts\novolis-os-rootfs.tar.zst`
 
-### WSL2
+## Optional: Podman console
 
-Extract the tarball into a WSL distro import directory (`wsl --import`), then launch Avalonia/Raylib apps with WSLg or an X/Wayland server.
+```powershell
+pwsh -File d:\novolis\novolis-os\scripts\Build-PodmanImage.ps1
+pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1
+```
+
+Same package set; no DRM/Wayland seat — console only.
+
+## WSL2
+
+Extract `artifacts/novolis-os-rootfs.tar.zst` and `wsl --import` if you want the userspace under WSLg.

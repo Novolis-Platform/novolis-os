@@ -2,46 +2,33 @@
 
 ## Purpose
 
-**Novolis OS** is a minimal Debian (glibc) runtime image for running Novolis applications — Avalonia desktops, Raylib games, headless .NET services — without a desktop environment or developer toolchain.
+**Novolis OS** is a single Debian (glibc) image for running Novolis apps — Avalonia, Raylib, headless .NET — without a desktop environment or SDK.
 
-Minimal is enforced by allowlists and budgets, not slogans.
+One profile (`profiles/default.yaml`) keeps UI + boot stack together so QEMU GUI works without juggling variants.
 
-## Profiles
+## Deliverables
 
-| Profile | Artifact | Contains |
-|---------|----------|----------|
-| `rootfs` | `novolis-os-rootfs.tar.zst` | Userspace + .NET 10 runtime + UI/audio libs |
-| Podman OCI | `localhost/novolis-os:latest` | Rootfs + baked-in `HelloNovolisOs` entrypoint app |
-| `appliance` | `novolis-os.qcow2` + `boot/vmlinuz` | Kernel + systemd + seatd + cage + Avalonia GUI smoke |
-
-Apps are **not** product installs. The Podman image bakes in `smokes/HelloNovolisOs` as the default entrypoint so `podman run` starts a real process. Other apps are bind-mounted.
+| Artifact | Role |
+|----------|------|
+| `novolis-os-rootfs.tar.zst` | Full userspace (UI libs + kernel packages as installed) |
+| `novolis-os.qcow2` + `boot/*` | QEMU kernel-direct boot → systemd → cage → Avalonia smoke |
+| Podman OCI (optional) | Same rootfs + console Hello entrypoint |
 
 ## Why Debian glibc
 
-Official .NET Linux RIDs and Avalonia/Raylib native stacks target glibc. Alpine/musl is out of scope for v1.
+Official .NET Linux RIDs and Avalonia/Raylib natives target glibc.
 
 ## Package policy
 
-- Every explicit package lives under `manifests/*.txt`.
-- Builds use `mmdebstrap --variant=minbase` and omit APT recommends.
-- Hard excludes: `manifests/excludes.txt` (desktop DEs, browsers, Pulse/PipeWire, SDKs, compilers, docs).
-- `scripts/Verify-PackageBudget.ps1` fails CI if allowlists grow past the budget or match an exclude.
+- Explicit packages under `manifests/*.txt`, composed by `profiles/default.yaml`
+- `mmdebstrap --variant=minbase`, no APT recommends
+- Hard excludes: `manifests/excludes.txt`
+- Budgets: ≤80 explicit, ≤280 resolved, ≤900 MiB `.tar.zst`
 
-### Budgets
+## UI / boot
 
-| Metric | Cap |
-|--------|-----|
-| Explicit allowlist packages (rootfs manifests, excluding comments) | 64 |
-| Explicit allowlist packages (including appliance.txt) | 80 |
-| Resolved packages in a built rootfs (when `artifacts/resolved-packages.txt` present) | 280 |
-| Rootfs tarball size (`.tar.zst`) | 900 MiB |
-
-## UI model
-
-No GNOME/KDE/XFCE. The rootfs ships **client libraries** (X11, Wayland, Mesa, fonts, ICU) so Avalonia and Raylib can open windows under an external compositor (WSL, nested, or host Wayland).
-
-The appliance boots with systemd `graphical.target`, **cage**, and **HelloNovolisOsGui** (Avalonia) for QEMU (`Run-Qemu.ps1`). Podman remains headless/console-oriented.
+No GNOME/KDE. Client libs for Avalonia/Raylib; appliance path uses **seatd** + **cage** and defaults to `graphical.target` with **HelloNovolisOsGui**.
 
 ## .NET
 
-`dotnet-runtime-10.0` only, installed from the official .NET runtime tarball (`dotnet-install.sh`). No SDK, no ASP.NET runtime unless a future consumer proves need. Microsoft apt feeds are avoided (Debian 13+ OpenPGP policy rejects their SHA1-bound signing key).
+Runtime 10 from the official tarball (`dotnet-install.sh`), not Microsoft apt (Debian 13+ sqv rejects that feed’s SHA1-bound key).

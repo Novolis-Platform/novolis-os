@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Enforce Novolis OS minimal package allowlists and budgets (bash twin of Verify-PackageBudget.ps1).
+# Enforce Novolis OS package allowlists and budgets (single profile).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RESOLVED="${1:-}"
 MANIFEST_DIR="$REPO_ROOT/manifests"
-MAX_ROOTFS=64
-MAX_ALL=80
+MAX_EXPLICIT=80
 MAX_RESOLVED=280
 
 read_list() {
@@ -27,28 +26,20 @@ matches_exclude() {
   return 1
 }
 
-mapfile -t ROOTFS_PKGS < <(
-  for f in base.txt dotnet.txt ui-graphics.txt audio-alsa.txt; do
+mapfile -t ALL_PKGS < <(
+  for f in base.txt dotnet.txt ui-graphics.txt audio-alsa.txt appliance.txt; do
     read_list "$MANIFEST_DIR/$f"
   done | sort -u
 )
-mapfile -t APPLIANCE_PKGS < <(read_list "$MANIFEST_DIR/appliance.txt")
-mapfile -t ALL_PKGS < <(printf '%s\n' "${ROOTFS_PKGS[@]}" "${APPLIANCE_PKGS[@]}" | sort -u)
 
-ROOTFS_COUNT="${#ROOTFS_PKGS[@]}"
 ALL_COUNT="${#ALL_PKGS[@]}"
 FAIL=0
 
-echo "Novolis OS package budget"
-echo "  rootfs explicit : $ROOTFS_COUNT / $MAX_ROOTFS"
-echo "  all explicit    : $ALL_COUNT / $MAX_ALL"
+echo "Novolis OS package budget (single profile)"
+echo "  explicit : $ALL_COUNT / $MAX_EXPLICIT"
 
-if (( ROOTFS_COUNT > MAX_ROOTFS )); then
-  echo "Rootfs explicit packages: $ROOTFS_COUNT > budget $MAX_ROOTFS" >&2
-  FAIL=1
-fi
-if (( ALL_COUNT > MAX_ALL )); then
-  echo "All explicit packages: $ALL_COUNT > budget $MAX_ALL" >&2
+if (( ALL_COUNT > MAX_EXPLICIT )); then
+  echo "Explicit packages: $ALL_COUNT > budget $MAX_EXPLICIT" >&2
   FAIL=1
 fi
 
@@ -66,7 +57,7 @@ fi
 if [[ -n "$RESOLVED" && -f "$RESOLVED" ]]; then
   mapfile -t RESOLVED_PKGS < <(read_list "$RESOLVED")
   RESOLVED_COUNT="${#RESOLVED_PKGS[@]}"
-  echo "  resolved        : $RESOLVED_COUNT / $MAX_RESOLVED"
+  echo "  resolved : $RESOLVED_COUNT / $MAX_RESOLVED"
   if (( RESOLVED_COUNT > MAX_RESOLVED )); then
     echo "Resolved packages: $RESOLVED_COUNT > budget $MAX_RESOLVED" >&2
     FAIL=1
@@ -78,7 +69,7 @@ if [[ -n "$RESOLVED" && -f "$RESOLVED" ]]; then
     fi
   done
 else
-  echo "  resolved        : (no artifacts/resolved-packages.txt yet)"
+  echo "  resolved : (no artifacts/resolved-packages.txt yet)"
 fi
 
 if (( FAIL != 0 )); then

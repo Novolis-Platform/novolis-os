@@ -3,7 +3,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PROFILE="${1:-$REPO_ROOT/profiles/rootfs.yaml}"
+PROFILE="${1:-$REPO_ROOT/profiles/default.yaml}"
 OUTPUT="${2:-}"
 
 bash "$REPO_ROOT/scripts/verify-package-budget.sh"

@@ -1,0 +1,15 @@
+[Unit]
+Description=Mount host Novolis app publish dir (QEMU virtfs 9p)
+DefaultDependencies=no
+After=systemd-remount-fs.service
+Before=novolis-gui.service
+ConditionKernelCommandLine=novolis.app=9p
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mkdir -p /opt/novolis/app
+ExecStart=/bin/mount -t 9p -o trans=virtio,version=9p2000.L,msize=262144,access=any novolisapp /opt/novolis/app
+
+[Install]
+WantedBy=graphical.target

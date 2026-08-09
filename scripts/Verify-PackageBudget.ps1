@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-  Enforce Novolis OS minimal package allowlists and budgets.
+  Enforce Novolis OS package allowlists and budgets (single profile).
 #>
 [CmdletBinding()]
 param(
@@ -36,32 +36,25 @@ function Test-ExcludeMatch {
 }
 
 $manifestDir = Join-Path $RepoRoot 'manifests'
-$rootfsManifests = @('base.txt', 'dotnet.txt', 'ui-graphics.txt', 'audio-alsa.txt')
-$applianceExtra = 'appliance.txt'
+$manifestFiles = @('base.txt', 'dotnet.txt', 'ui-graphics.txt', 'audio-alsa.txt', 'appliance.txt')
 $excludePath = Join-Path $manifestDir 'excludes.txt'
 
 $excludes = @(Read-PackageList -Path $excludePath)
-$rootfsPackages = foreach ($file in $rootfsManifests) {
-    Read-PackageList -Path (Join-Path $manifestDir $file)
-}
-$appliancePackages = @(Read-PackageList -Path (Join-Path $manifestDir $applianceExtra))
-$allExplicit = @($rootfsPackages + $appliancePackages | Select-Object -Unique)
+$allExplicit = @(
+    foreach ($file in $manifestFiles) {
+        Read-PackageList -Path (Join-Path $manifestDir $file)
+    }
+) | Select-Object -Unique
+$allExplicit = @($allExplicit)
 
-$rootfsCount = @($rootfsPackages | Select-Object -Unique).Count
 $allCount = $allExplicit.Count
-
-# Budgets from docs/design.md
-$maxRootfsExplicit = 64
-$maxAllExplicit = 80
+$maxExplicit = 80
 $maxResolved = 280
 
 $failures = [System.Collections.Generic.List[string]]::new()
 
-if ($rootfsCount -gt $maxRootfsExplicit) {
-    $failures.Add("Rootfs explicit packages: $rootfsCount > budget $maxRootfsExplicit")
-}
-if ($allCount -gt $maxAllExplicit) {
-    $failures.Add("All explicit packages: $allCount > budget $maxAllExplicit")
+if ($allCount -gt $maxExplicit) {
+    $failures.Add("Explicit packages: $allCount > budget $maxExplicit")
 }
 
 foreach ($pkg in $allExplicit) {
@@ -70,10 +63,8 @@ foreach ($pkg in $allExplicit) {
     }
 }
 
-$dupes = $allExplicit | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name }
-# Unique already applied — check across files for accidental repeats messaging
 $seen = @{}
-foreach ($file in ($rootfsManifests + @($applianceExtra))) {
+foreach ($file in $manifestFiles) {
     foreach ($pkg in (Read-PackageList -Path (Join-Path $manifestDir $file))) {
         if ($seen.ContainsKey($pkg)) {
             Write-Warning "Package '$pkg' listed in both '$($seen[$pkg])' and '$file' (allowed but noisy)."
@@ -103,15 +94,14 @@ if ($ResolvedPackagesPath -and (Test-Path -LiteralPath $ResolvedPackagesPath)) {
     }
 }
 
-Write-Host "Novolis OS package budget"
-Write-Host "  rootfs explicit : $rootfsCount / $maxRootfsExplicit"
-Write-Host "  all explicit    : $allCount / $maxAllExplicit"
+Write-Host "Novolis OS package budget (single profile)"
+Write-Host "  explicit : $allCount / $maxExplicit"
 if ($ResolvedPackagesPath -and (Test-Path -LiteralPath $ResolvedPackagesPath)) {
     $resolvedCount = @(Read-PackageList -Path $ResolvedPackagesPath).Count
-    Write-Host "  resolved        : $resolvedCount / $maxResolved"
+    Write-Host "  resolved : $resolvedCount / $maxResolved"
 }
 else {
-    Write-Host "  resolved        : (no artifacts/resolved-packages.txt yet)"
+    Write-Host "  resolved : (no artifacts/resolved-packages.txt yet)"
 }
 
 if ($failures.Count -gt 0) {

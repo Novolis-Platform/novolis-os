@@ -1,0 +1,17 @@
+# Single Novolis OS profile: Debian minbase + .NET 10 + UI/audio + kernel/systemd/cage.
+# One stack for QEMU GUI and optional Podman (accept the size for flexibility).
+name: default
+suite: trixie
+variant: minbase
+architectures:
+  - amd64
+manifests:
+  - base.txt
+  - dotnet.txt
+  - ui-graphics.txt
+  - audio-alsa.txt
+  - appliance.txt
+omit_recommends: true
+dotnet_tarball: true
+output: artifacts/novolis-os.qcow2
+rootfs_output: artifacts/novolis-os-rootfs.tar.zst

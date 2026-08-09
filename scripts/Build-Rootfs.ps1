@@ -28,7 +28,7 @@ Or verify allowlists only:
 }
 
 if (-not $ProfilePath) {
-    $ProfilePath = Join-Path $RepoRoot 'profiles/rootfs.yaml'
+    $ProfilePath = Join-Path $RepoRoot 'profiles/default.yaml'
 }
 
 $bashBuilder = Join-Path $PSScriptRoot 'build-rootfs.sh'

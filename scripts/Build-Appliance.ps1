@@ -10,18 +10,33 @@ param(
     [string] $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string] $ProfilePath = '',
     [int] $DiskSizeGb = 8,
-    [string] $BuilderImage = 'docker.io/library/ubuntu:24.04'
+    [string] $BuilderImage = 'docker.io/library/ubuntu:24.04',
+    # Optional: publish a novolis-apps project into artifacts/app-publish before the disk build.
+    [string] $AppProject = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 if (-not $ProfilePath) {
-    $ProfilePath = Join-Path $RepoRoot 'profiles/appliance.yaml'
+    $ProfilePath = Join-Path $RepoRoot 'profiles/default.yaml'
 }
 
 & (Join-Path $PSScriptRoot 'Verify-PackageBudget.ps1') -RepoRoot $RepoRoot
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$appPublish = Join-Path $RepoRoot 'artifacts/app-publish'
+if ($AppProject) {
+    if (-not (Test-Path -LiteralPath $AppProject)) {
+        throw "AppProject not found: $AppProject"
+    }
+    Write-Host "Publishing $AppProject -> $appPublish (linux-x64)..."
+    New-Item -ItemType Directory -Force -Path $appPublish | Out-Null
+    Get-ChildItem -LiteralPath $appPublish -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+    & dotnet publish $AppProject -c Release -r linux-x64 --self-contained false `
+        /p:UseAppHost=false /p:DebugType=None -o $appPublish
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 
 function ConvertTo-PodmanMount([string] $Path) {
     $m = ($Path -replace '\\', '/')
@@ -67,14 +82,14 @@ export PATH="/usr/share/dotnet:$PATH"
 export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0
 cd /src
 chmod +x scripts/build-appliance.sh scripts/build-rootfs.sh scripts/verify-package-budget.sh
-bash scripts/build-appliance.sh /src/profiles/appliance.yaml
+bash scripts/build-appliance.sh /src/profiles/default.yaml
 '@
 $inner = $inner -replace "`r`n", "`n"
 $innerPath = Join-Path $artifacts 'podman-appliance-inner.sh'
 [System.IO.File]::WriteAllText($innerPath, $inner + "`n")
 
 Write-Host "Building GUI appliance in privileged $BuilderImage (this takes a while)..."
-$skipRootfs = if (Test-Path (Join-Path $RepoRoot 'artifacts/novolis-os-appliance-rootfs.tar.zst')) { '1' } else { '0' }
+$skipRootfs = if (Test-Path (Join-Path $RepoRoot 'artifacts/novolis-os-rootfs.tar.zst')) { '1' } else { '0' }
 & podman run --rm --privileged `
     -e "DISK_GB=$DiskSizeGb" `
     -e "SKIP_ROOTFS=$skipRootfs" `

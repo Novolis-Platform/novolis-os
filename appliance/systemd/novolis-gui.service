@@ -1,8 +1,8 @@
 [Unit]
-Description=Novolis OS GUI (cage + Avalonia Hello)
+Description=Novolis OS GUI (cage + /opt/novolis/app)
 Documentation=https://github.com/Novolis-Platform/novolis-os
-After=seatd.service systemd-user-sessions.service
-Wants=seatd.service
+After=seatd.service systemd-user-sessions.service novolis-app-9p.service
+Wants=seatd.service novolis-app-9p.service
 
 [Service]
 Type=simple
@@ -10,9 +10,13 @@ Environment=XDG_RUNTIME_DIR=/run/novolis
 Environment=WLR_LIBINPUT_NO_DEVICES=1
 Environment=DOTNET_ROOT=/usr/share/dotnet
 Environment=DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0
+# Raylib/GLFW: prefer Wayland under cage when available
+Environment=GDK_BACKEND=wayland
+Environment=SDL_VIDEODRIVER=wayland
 ExecStartPre=/usr/bin/mkdir -p /run/novolis
 ExecStartPre=/usr/bin/chmod 700 /run/novolis
-ExecStart=/usr/bin/cage -- /usr/bin/dotnet /opt/novolis/hello-gui/HelloNovolisOsGui.dll
+# Prefer dogfood ArtillerySimulator when present; else first app DLL / smoke.
+ExecStart=/bin/sh -c 'APP=""; for c in ArtillerySimulator.dll EconomyBoard.dll HelloNovolisOsGui.dll GeoPolity.dll; do if [ -f /opt/novolis/app/$c ]; then APP=$c; break; fi; done; if [ -z "$APP" ]; then APP=$(ls /opt/novolis/app/*.dll 2>/dev/null | head -n1 | xargs -r basename); fi; if [ -z "$APP" ]; then echo "No app DLL in /opt/novolis/app" >&2; exit 1; fi; echo "Starting $APP"; exec /usr/bin/cage -- /usr/bin/dotnet /opt/novolis/app/$APP'
 Restart=on-failure
 RestartSec=2
 

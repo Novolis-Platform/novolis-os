@@ -1,6 +1,6 @@
 # Podman
 
-Build and run **Novolis OS** as an OCI container for **console / headless** checks.
+Build and run the **same single profile** as an OCI container for **console** checks (no DRM/Wayland in Podman).
 
 For **Avalonia / Raylib GUI**, use the QEMU appliance instead — see [vm.md](vm.md). Containers do not provide a DRM/Wayland seat the way a VM display does.
 

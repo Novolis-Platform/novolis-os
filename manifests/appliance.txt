@@ -1,4 +1,4 @@
-# Bootable appliance only (not installed into rootfs-only profile).
+# Kernel, init, and kiosk compositor (single default profile).
 linux-image-amd64
 systemd
 systemd-sysv
