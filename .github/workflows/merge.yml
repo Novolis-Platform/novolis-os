@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       build_appliance:
-        description: Also build qcow2 appliance (needs guestfs)
+        description: Also build qcow2 + UEFI hybrid ISO (privileged disk tools)
         type: boolean
         default: false
 jobs:
@@ -71,12 +71,14 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring \
-            qemu-utils e2fsprogs rsync
+            qemu-utils e2fsprogs rsync gdisk dosfstools kpartx util-linux
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
       - name: Build appliance
+        env:
+          BUILD_ISO: '1'
         run: |
           chmod +x "${{ github.workspace }}/scripts/build-appliance.sh" \
             "${{ github.workspace }}/scripts/build-rootfs.sh" \
@@ -88,6 +90,8 @@ jobs:
           name: novolis-os-appliance
           path: |
             artifacts/novolis-os.qcow2
+            artifacts/novolis-os.iso
+            artifacts/novolis-os-uefi.img
             artifacts/novolis-os-rootfs.tar.zst
             artifacts/boot/**
             artifacts/resolved-packages.txt

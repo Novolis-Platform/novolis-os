@@ -3,6 +3,7 @@
 ## Prerequisites
 
 - **QEMU** (`qemu-system-x86_64`) — GUI / primary path ([vm.md](vm.md))
+- **Hyper-V** (optional, Gen2) — [iso.md](iso.md) / `Run-HyperV.ps1`
 - **Podman** — optional console smoke ([podman.md](podman.md))
 - Or Linux with `mmdebstrap`, `zstd`, `e2fsprogs` for native builds
 
@@ -27,6 +28,12 @@ Real hardware / OVMF validation: flash or run the UEFI hybrid ([iso.md](iso.md))
 
 ```powershell
 pwsh -File d:\novolis\novolis-os\scripts\Run-Iso.ps1
+```
+
+Hyper-V (elevated):
+
+```powershell
+pwsh -File d:\novolis\novolis-os\scripts\Run-HyperV.ps1
 ```
 
 Install **GeoPolity** from novolis-apps:

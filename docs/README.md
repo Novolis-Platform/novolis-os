@@ -14,7 +14,7 @@ Published docs: [https://novolis-platform.github.io/.github/novolis-os/](https:/
 | [podman.md](podman.md) | podman |
 | [runtime-surface.md](runtime-surface.md) | runtime-surface |
 | [vm.md](vm.md) | QEMU kernel-direct and OVMF |
-| [iso.md](iso.md) | UEFI hybrid ISO / USB flash |
+| [iso.md](iso.md) | UEFI hybrid ISO / USB flash / Hyper-V |
 
 ## More
 

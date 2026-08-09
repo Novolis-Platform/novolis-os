@@ -8,6 +8,7 @@ Two boot modes:
 |--------|----------|------|------|
 | `Run-Qemu.ps1` | none (kernel-direct) | `novolis-os.qcow2` | Fast dogfood / GUI smoke |
 | `Run-Iso.ps1` | OVMF UEFI | `novolis-os.iso` | Validate real-hardware boot path |
+| `Run-HyperV.ps1` | Hyper-V Gen2 UEFI | `novolis-os-uefi.vhdx` | Windows host Hyper-V |
 
 Real USB flash: [iso.md](iso.md).
 

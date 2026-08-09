@@ -3,13 +3,14 @@ artifacts/
 *.tar.zst
 *.qcow2
 *.vhdx
+*.avhdx
 *.raw
 *.img
+*.iso
+*.log
 .DS_Store
 .idea/
 .vs/
 *.user
-artifacts/podman-build-inner.sh
-artifacts/podman-appliance-inner.sh
 smokes/**/bin/
 smokes/**/obj/

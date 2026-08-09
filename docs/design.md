@@ -24,7 +24,7 @@ Official .NET Linux RIDs and Avalonia/Raylib natives target glibc.
 - Explicit packages under `manifests/*.txt`, composed by `profiles/default.yaml`
 - `mmdebstrap --variant=minbase`, no APT recommends
 - Hard excludes: `manifests/excludes.txt`
-- Budgets: ≤80 explicit, ≤280 resolved, ≤900 MiB `.tar.zst`
+- Budgets: ≤80 explicit, ≤280 resolved, ≤900 MiB `.tar.zst` (currently ~49 explicit / ~240 resolved with GRUB EFI)
 
 ## UI / boot
 

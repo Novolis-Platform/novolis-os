@@ -1,4 +1,4 @@
-# Kernel, init, and kiosk compositor (single default profile).
+# Kernel, init, kiosk compositor, and UEFI bootloader (single default profile).
 linux-image-amd64
 systemd
 systemd-sysv
@@ -9,3 +9,5 @@ libpam-systemd
 adduser
 passwd
 sudo
+grub-efi-amd64
+grub-efi-amd64-bin

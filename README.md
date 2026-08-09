@@ -59,6 +59,11 @@ pwsh -File d:\novolis\novolis-os\scripts\Run-Iso.ps1
 
 Details: [docs/iso.md](docs/iso.md).
 
+```powershell
+# Elevated PowerShell — Hyper-V Gen2 (Secure Boot off)
+pwsh -File d:\novolis\novolis-os\scripts\Run-HyperV.ps1
+```
+
 ## Optional: Podman console
 
 ```powershell

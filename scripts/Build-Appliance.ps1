@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-  Build the Novolis OS GUI appliance (qcow2 + kernel/initrd for QEMU).
+  Build the Novolis OS GUI appliance (qcow2 + UEFI hybrid ISO/img + kernel/initrd).
 
   On Windows, builds inside a privileged Podman container (Linux tools + .NET SDK).
 #>
@@ -12,7 +12,8 @@ param(
     [int] $DiskSizeGb = 8,
     [string] $BuilderImage = 'docker.io/library/ubuntu:24.04',
     # Optional: publish a novolis-apps project into artifacts/app-publish before the disk build.
-    [string] $AppProject = ''
+    [string] $AppProject = '',
+    [bool] $BuildIso = $true
 )
 
 Set-StrictMode -Version Latest
@@ -46,15 +47,18 @@ function ConvertTo-PodmanMount([string] $Path) {
     return $m
 }
 
+$buildIsoEnv = if ($BuildIso) { '1' } else { '0' }
+
 if ($IsLinux) {
     $env:DISK_GB = "$DiskSizeGb"
+    $env:BUILD_ISO = $buildIsoEnv
     & bash (Join-Path $PSScriptRoot 'build-appliance.sh') $ProfilePath
     exit $LASTEXITCODE
 }
 
 if (-not (Get-Command podman -ErrorAction SilentlyContinue)) {
     throw @"
-Appliance builds need Linux tools (mmdebstrap, virt-make-fs) or Podman Desktop.
+Appliance builds need Linux tools (mmdebstrap, e2fsprogs, gdisk) or Podman Desktop.
 Install Podman, then re-run:
 
   pwsh -File $RepoRoot\scripts\Build-Appliance.ps1
@@ -69,10 +73,12 @@ $inner = @'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export DISK_GB="${DISK_GB:-8}"
+export BUILD_ISO="${BUILD_ISO:-1}"
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends \
   mmdebstrap zstd curl ca-certificates debian-archive-keyring bash xz-utils \
-  qemu-utils e2fsprogs rsync mount libicu74
+  qemu-utils e2fsprogs rsync mount libicu74 \
+  gdisk dosfstools kpartx util-linux
 # .NET SDK 10 for publishing Avalonia + console smokes
 curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
 bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet
@@ -90,9 +96,22 @@ $innerPath = Join-Path $artifacts 'podman-appliance-inner.sh'
 
 Write-Host "Building GUI appliance in privileged $BuilderImage (this takes a while)..."
 $skipRootfs = if (Test-Path (Join-Path $RepoRoot 'artifacts/novolis-os-rootfs.tar.zst')) { '1' } else { '0' }
+# ISO needs grub packages in the rootfs — force rebuild when building ISO from a stale tarball.
+if ($BuildIso -and $skipRootfs -eq '1') {
+    $resolved = Join-Path $RepoRoot 'artifacts/resolved-packages.txt'
+    $hasGrub = $false
+    if (Test-Path -LiteralPath $resolved) {
+        $hasGrub = [bool](Select-String -LiteralPath $resolved -Pattern '^grub-efi-amd64$' -Quiet)
+    }
+    if (-not $hasGrub) {
+        Write-Host 'Rootfs tarball predates grub-efi — rebuilding rootfs for UEFI ISO.'
+        $skipRootfs = '0'
+    }
+}
 & podman run --rm --privileged `
     -e "DISK_GB=$DiskSizeGb" `
     -e "SKIP_ROOTFS=$skipRootfs" `
+    -e "BUILD_ISO=$buildIsoEnv" `
     -v "${repoMount}:/src:Z" `
     -w /src `
     $BuilderImage `
@@ -104,5 +123,10 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Appliance ready:"
 Write-Host "  $(Join-Path $RepoRoot 'artifacts\novolis-os.qcow2')"
 Write-Host "  $(Join-Path $RepoRoot 'artifacts\boot\vmlinuz')"
-Write-Host "Run: pwsh -File $(Join-Path $RepoRoot 'scripts\Run-Qemu.ps1')"
+if ($BuildIso) {
+    Write-Host "  $(Join-Path $RepoRoot 'artifacts\novolis-os.iso')"
+    Write-Host "  $(Join-Path $RepoRoot 'artifacts\novolis-os-uefi.img')"
+    Write-Host "Run OVMF: pwsh -File $(Join-Path $RepoRoot 'scripts\Run-Iso.ps1')"
+}
+Write-Host "Run QEMU:  pwsh -File $(Join-Path $RepoRoot 'scripts\Run-Qemu.ps1')"
 exit 0

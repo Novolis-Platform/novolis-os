@@ -14,6 +14,7 @@ Produces (among other artifacts):
 |------|------|
 | `artifacts/novolis-os.iso` | GPT hybrid (identical bytes to `.img`) — flash in **DD** mode |
 | `artifacts/novolis-os-uefi.img` | Same image, clearer name for `dd` |
+| `artifacts/novolis-os-uefi.vhdx` | Hyper-V Gen2 disk (from `Run-HyperV.ps1`) |
 
 UEFI only — no legacy BIOS. GRUB is **unsigned** → turn **Secure Boot off**.
 
@@ -27,6 +28,17 @@ UEFI only — no legacy BIOS. GRUB is **unsigned** → turn **Secure Boot off**.
 # Example: replace /dev/sdX with your USB device — destroys all data on it
 # dd if=d:/novolis/novolis-os/artifacts/novolis-os.iso of=/dev/sdX bs=4M status=progress conv=fsync
 ```
+
+## Test in Hyper-V (Generation 2)
+
+Converts the GPT hybrid to VHDX, creates VM **NovolisOS** with **Secure Boot Off**, and opens VM Connect:
+
+```powershell
+# Elevated PowerShell required
+pwsh -File d:\novolis\novolis-os\scripts\Run-HyperV.ps1
+```
+
+Do not attach a qcow-derived disk to Hyper-V. `Run-HyperV.ps1` builds `artifacts/novolis-os-uefi.vhdx` from the UEFI GPT hybrid.
 
 ## Test in QEMU (OVMF)
 
