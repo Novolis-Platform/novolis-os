@@ -2,16 +2,37 @@
 
 ## Versioning
 
-Images are versioned by **git tag** and CI run, not NuGet.
+Images are versioned by **git tag** + a **manual** GitHub Actions release — not NuGet, and **not** on every merge.
 
 | Artifact | Produced by | When |
 |----------|-------------|------|
-| `novolis-os-rootfs.tar.zst` | `Build-Rootfs.ps1` / `merge.yml` | Every merge that touches manifests, profiles, or scripts |
-| `novolis-os.qcow2` | `Build-Appliance.ps1` | Same, when the appliance job succeeds |
-| `novolis-os.iso` / `novolis-os-uefi.img` | `Build-Appliance.ps1` (`BUILD_ISO=1`) | Same appliance job |
-| `novolis-os-uefi.vhdx` | `Run-HyperV.ps1` (local convert) | Hyper-V Gen2 |
+| `novolis-os-rootfs.tar.zst` | `Release` workflow | Manual `workflow_dispatch` only |
+| `novolis-os.qcow2` | same | same |
+| `novolis-os.iso` / `novolis-os-uefi.img` | same (`BUILD_ISO=1`) | same |
+| `novolis-os-uefi.vhdx` | `Run-HyperV.ps1` (local convert) | Hyper-V Gen2 on a workstation |
 
-Tag format: `vYYYY.M.D` or `v0.1.0` — attach artifacts to a GitHub Release manually or via `workflow_dispatch`.
+Tag format: `vYYYY.M.D` or `v0.1.0`.
+
+## CI policy
+
+| Workflow | Trigger | What it does |
+|----------|---------|----------------|
+| `pull-request.yml` | PR → `main` | Package budget only |
+| `merge.yml` | push → `main` | Package budget only |
+| `release.yml` | **manual** `workflow_dispatch` | Build rootfs + appliance + UEFI ISO, create GitHub Release + assets |
+
+No automatic rootfs/appliance/ISO/Podman image builds on merge.
+
+### Cut a release
+
+1. Actions → **Release** → **Run workflow**
+2. Enter tag (e.g. `v0.2.0`); optional prerelease
+3. Download assets from the GitHub Release page
+
+```powershell
+# Local equivalent (no GitHub Release):
+pwsh -File d:\novolis\novolis-os\scripts\Build-Appliance.ps1
+```
 
 ## No NuGet publish
 

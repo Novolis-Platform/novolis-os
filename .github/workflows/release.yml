@@ -1,0 +1,103 @@
+# Manual release only — builds rootfs + qcow2 + UEFI hybrid and publishes a GitHub Release.
+# Does not run on push/PR.
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (e.g. v0.2.0 or v2026.8.9)
+        required: true
+        type: string
+      prerelease:
+        description: Mark as prerelease
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify package budget
+        shell: pwsh
+        run: pwsh -File "${{ github.workspace }}/scripts/Verify-PackageBudget.ps1"
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring \
+            qemu-utils e2fsprogs rsync gdisk dosfstools kpartx util-linux
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build appliance (rootfs + qcow2 + UEFI ISO)
+        env:
+          BUILD_ISO: '1'
+        run: |
+          chmod +x "${{ github.workspace }}/scripts/build-appliance.sh" \
+            "${{ github.workspace }}/scripts/build-rootfs.sh" \
+            "${{ github.workspace }}/scripts/verify-package-budget.sh"
+          bash "${{ github.workspace }}/scripts/build-appliance.sh"
+
+      - name: Stage release assets
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release
+          cp -f artifacts/novolis-os-rootfs.tar.zst artifacts/release/
+          cp -f artifacts/novolis-os.qcow2 artifacts/release/
+          cp -f artifacts/novolis-os.iso artifacts/release/
+          cp -f artifacts/novolis-os-uefi.img artifacts/release/
+          cp -f artifacts/resolved-packages.txt artifacts/release/
+          mkdir -p artifacts/release/boot
+          cp -f artifacts/boot/vmlinuz artifacts/boot/initrd.img artifacts/boot/cmdline.txt \
+            artifacts/release/boot/
+          (cd artifacts/release && sha256sum \
+            novolis-os-rootfs.tar.zst \
+            novolis-os.qcow2 \
+            novolis-os.iso \
+            novolis-os-uefi.img \
+            resolved-packages.txt \
+            boot/vmlinuz boot/initrd.img boot/cmdline.txt \
+            > SHA256SUMS)
+          ls -lh artifacts/release artifacts/release/boot
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — attaching assets to that release (or creating release for existing tag)."
+          else
+            git tag "$TAG" "${{ github.sha }}"
+            git push origin "$TAG"
+          fi
+          args=(release create "$TAG" --title "$TAG" --generate-notes --verify-tag)
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          assets=(
+            artifacts/release/novolis-os-rootfs.tar.zst
+            artifacts/release/novolis-os.qcow2
+            artifacts/release/novolis-os.iso
+            artifacts/release/novolis-os-uefi.img
+            artifacts/release/resolved-packages.txt
+            artifacts/release/SHA256SUMS
+            artifacts/release/boot/vmlinuz
+            artifacts/release/boot/initrd.img
+            artifacts/release/boot/cmdline.txt
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+          else
+            gh "${args[@]}" "${assets[@]}"
+          fi

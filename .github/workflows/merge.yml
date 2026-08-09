@@ -2,12 +2,6 @@ name: Merge
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      build_appliance:
-        description: Also build qcow2 + UEFI hybrid ISO (privileged disk tools)
-        type: boolean
-        default: false
 jobs:
   budget:
     runs-on: ubuntu-latest
@@ -16,84 +10,3 @@ jobs:
       - name: Verify package budget
         shell: pwsh
         run: pwsh -File "${{ github.workspace }}/scripts/Verify-PackageBudget.ps1"
-
-  rootfs:
-    needs: budget
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install build tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring
-      - name: Build rootfs
-        run: |
-          chmod +x "${{ github.workspace }}/scripts/build-rootfs.sh" "${{ github.workspace }}/scripts/verify-package-budget.sh"
-          bash "${{ github.workspace }}/scripts/build-rootfs.sh"
-      - name: Upload rootfs
-        uses: actions/upload-artifact@v4
-        with:
-          name: novolis-os-rootfs
-          path: |
-            artifacts/novolis-os-rootfs.tar.zst
-            artifacts/resolved-packages.txt
-          if-no-files-found: error
-          retention-days: 14
-
-  podman:
-    needs: rootfs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download rootfs
-        uses: actions/download-artifact@v4
-        with:
-          name: novolis-os-rootfs
-          path: artifacts
-      - name: Install Podman
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq podman zstd
-      - name: Build and run Novolis OS image
-        shell: pwsh
-        run: |
-          pwsh -File "${{ github.workspace }}/scripts/Build-PodmanImage.ps1" -SkipRootfsBuild
-      - name: Upload note
-        run: podman images localhost/novolis-os
-
-  appliance:
-    if: github.event_name == 'workflow_dispatch' && inputs.build_appliance == true
-    needs: budget
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install build tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring \
-            qemu-utils e2fsprogs rsync gdisk dosfstools kpartx util-linux
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-      - name: Build appliance
-        env:
-          BUILD_ISO: '1'
-        run: |
-          chmod +x "${{ github.workspace }}/scripts/build-appliance.sh" \
-            "${{ github.workspace }}/scripts/build-rootfs.sh" \
-            "${{ github.workspace }}/scripts/verify-package-budget.sh"
-          bash "${{ github.workspace }}/scripts/build-appliance.sh"
-      - name: Upload appliance
-        uses: actions/upload-artifact@v4
-        with:
-          name: novolis-os-appliance
-          path: |
-            artifacts/novolis-os.qcow2
-            artifacts/novolis-os.iso
-            artifacts/novolis-os-uefi.img
-            artifacts/novolis-os-rootfs.tar.zst
-            artifacts/boot/**
-            artifacts/resolved-packages.txt
-          if-no-files-found: error
-          retention-days: 14
