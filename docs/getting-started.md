@@ -19,7 +19,7 @@ pwsh -File d:\novolis\novolis-os\scripts\Build-PodmanImage.ps1
 pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1
 ```
 
-Produces `localhost/novolis-os:latest` and checks for `Microsoft.NETCore.App 10.x`. Details: [podman.md](podman.md).
+Produces `localhost/novolis-os:latest` with entrypoint **HelloNovolisOs**. Smoke runs the app once (`--once`). Details: [podman.md](podman.md).
 
 ## Build rootfs on Linux host
 

@@ -38,7 +38,7 @@ Minimalism is gated by `manifests/` allowlists and `scripts/Verify-PackageBudget
 
 | Profile | Script | Artifact |
 |---------|--------|----------|
-| Podman OCI | `scripts/Build-PodmanImage.ps1` | `localhost/novolis-os:latest` |
+| Podman OCI | `scripts/Build-PodmanImage.ps1` | `localhost/novolis-os:latest` (runs `HelloNovolisOs`) |
 | Rootfs | `scripts/Build-Rootfs.ps1` / `scripts/build-rootfs.sh` | `artifacts/novolis-os-rootfs.tar.zst` |
 | Appliance | `scripts/Build-Appliance.ps1` | `artifacts/novolis-os.qcow2` |
 
@@ -48,9 +48,10 @@ Minimalism is gated by `manifests/` allowlists and `scripts/Verify-PackageBudget
 pwsh -File d:\novolis\novolis-os\scripts\Verify-PackageBudget.ps1
 pwsh -File d:\novolis\novolis-os\scripts\Build-PodmanImage.ps1
 pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1
+pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1 -Stay
 ```
 
-Podman builds the rootfs in a privileged Ubuntu container (works on Windows Podman Desktop). Native Linux host builds use `Build-Rootfs.ps1`.
+`podman run` starts **HelloNovolisOs** (default entrypoint). See [docs/podman.md](docs/podman.md).
 
 ## Docs
 

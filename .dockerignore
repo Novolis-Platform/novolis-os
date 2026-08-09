@@ -1,0 +1,12 @@
+.git
+.idea
+.vs
+**/.DS_Store
+artifacts/**
+!artifacts/novolis-os-rootfs.tar.zst
+artifacts/rootfs-work
+artifacts/appliance-work
+*.qcow2
+*.tar
+docs
+.github

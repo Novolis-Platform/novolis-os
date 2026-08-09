@@ -66,31 +66,10 @@ if (-not (Test-Path -LiteralPath $rootfsZst)) {
     throw "Missing rootfs archive: $rootfsZst"
 }
 
-Write-Host 'Building OCI image via Containerfile (unpack rootfs) ...'
+Write-Host 'Building OCI image via Containerfile (rootfs + HelloNovolisOs) ...'
 & podman build -t $Image -f (Join-Path $RepoRoot 'Containerfile') $RepoRoot
 if ($LASTEXITCODE -ne 0) {
-    Write-Warning 'Containerfile build failed; falling back to podman import.'
-    if (Test-Path -LiteralPath $rootfsTar) {
-        Remove-Item -LiteralPath $rootfsTar -Force
-    }
-    & podman run --rm -v "${repoMount}:/src:Z" -w /src docker.io/library/ubuntu:24.04 `
-        bash -lc 'apt-get update -qq && apt-get install -y -qq zstd >/dev/null && zstd -d -f -o /src/artifacts/novolis-os-rootfs.tar /src/artifacts/novolis-os-rootfs.tar.zst'
-    if ($LASTEXITCODE -ne 0 -and (Get-Command zstd -ErrorAction SilentlyContinue)) {
-        & zstd -d -f -o $rootfsTar $rootfsZst
-    }
-    if (-not (Test-Path -LiteralPath $rootfsTar)) {
-        throw 'Failed to decompress rootfs for podman import fallback.'
-    }
-    & podman import `
-        --change 'ENV DOTNET_ROOT=/usr/share/dotnet' `
-        --change 'ENV PATH=/usr/share/dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' `
-        --change 'CMD ["/usr/bin/dotnet","--info"]' `
-        --change 'WORKDIR /' `
-        $rootfsTar `
-        $Image
-    if ($LASTEXITCODE -ne 0) {
-        throw "podman import failed with exit $LASTEXITCODE"
-    }
+    throw "podman build failed with exit $LASTEXITCODE (image must include HelloNovolisOs)."
 }
 
 if (-not $SkipSmoke) {

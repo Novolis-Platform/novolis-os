@@ -11,10 +11,10 @@ Minimal is enforced by allowlists and budgets, not slogans.
 | Profile | Artifact | Contains |
 |---------|----------|----------|
 | `rootfs` | `novolis-os-rootfs.tar.zst` | Userspace + .NET 10 runtime + UI/audio libs |
-| Podman OCI | `localhost/novolis-os:latest` | Rootfs unpacked via `Containerfile` |
+| Podman OCI | `localhost/novolis-os:latest` | Rootfs + baked-in `HelloNovolisOs` entrypoint app |
 | `appliance` | `novolis-os.qcow2` | Rootfs + kernel + systemd + seatd + cage |
 
-Apps are **not** baked into the image. Install or bind-mount them separately.
+Apps are **not** product installs. The Podman image bakes in `smokes/HelloNovolisOs` as the default entrypoint so `podman run` starts a real process. Other apps are bind-mounted.
 
 ## Why Debian glibc
 
