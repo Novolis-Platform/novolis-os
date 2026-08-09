@@ -30,3 +30,4 @@ Default image does not embed product apps.
 - [ ] Headless `dotnet` console app runs
 - [ ] Avalonia smoke (optional CI): window opens under cage or nested Wayland
 - [ ] Raylib smoke (optional): GL context creates
+- [ ] Podman: `Build-PodmanImage.ps1` then `Run-Podman.ps1` prints `app=HelloNovolisOs` / `status=running`
