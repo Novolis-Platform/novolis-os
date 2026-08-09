@@ -6,14 +6,9 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROFILE="${1:-$REPO_ROOT/profiles/appliance.yaml}"
 DISK_GB="${DISK_GB:-8}"
 
-for tool in mmdebstrap zstd tar curl qemu-img; do
+for tool in mmdebstrap zstd tar curl qemu-img mkfs.ext4 mount umount; do
   command -v "$tool" >/dev/null || { echo "Required tool not on PATH: $tool" >&2; exit 1; }
 done
-
-if ! command -v virt-make-fs >/dev/null; then
-  echo "virt-make-fs (guestfs-tools) is required." >&2
-  exit 1
-fi
 
 if ! command -v dotnet >/dev/null; then
   echo "dotnet SDK is required to publish GUI/console smokes." >&2
@@ -25,7 +20,11 @@ OUT_QCOW="$REPO_ROOT/artifacts/novolis-os.qcow2"
 BOOT_DIR="$REPO_ROOT/artifacts/boot"
 WORK="$REPO_ROOT/artifacts/appliance-work"
 
-bash "$REPO_ROOT/scripts/build-rootfs.sh" "$PROFILE" "$OUT_ROOTFS"
+if [[ "${SKIP_ROOTFS:-}" == "1" && -f "$OUT_ROOTFS" ]]; then
+  echo "SKIP_ROOTFS=1 — reusing $OUT_ROOTFS"
+else
+  bash "$REPO_ROOT/scripts/build-rootfs.sh" "$PROFILE" "$OUT_ROOTFS"
+fi
 
 rm -rf "$WORK"
 mkdir -p "$WORK/root" "$BOOT_DIR" "$WORK/publish-console" "$WORK/publish-gui"
@@ -41,7 +40,10 @@ dotnet publish "$REPO_ROOT/smokes/HelloNovolisOsGui/HelloNovolisOsGui.csproj" \
   -o "$WORK/publish-gui"
 
 echo "Unpacking appliance rootfs..."
-zstd -d -c "$OUT_ROOTFS" | tar -xf - -C "$WORK/root"
+# Skip device nodes — mknod fails in rootless/Podman extract; virt-make-fs does not need them.
+zstd -d -c "$OUT_ROOTFS" | tar -xf - -C "$WORK/root" \
+  --exclude='./dev' --exclude='./proc' --exclude='./sys'
+mkdir -p "$WORK/root/dev" "$WORK/root/proc" "$WORK/root/sys"
 
 ROOT="$WORK/root"
 mkdir -p "$ROOT/opt/novolis/hello" "$ROOT/opt/novolis/hello-gui" \
@@ -87,8 +89,20 @@ echo "Boot files: $BOOT_DIR/vmlinuz , $BOOT_DIR/initrd.img"
 
 RAW="$WORK/disk.raw"
 rm -f "$RAW" "$OUT_QCOW"
-echo "Creating ${DISK_GB}G ext4 image (LABEL=novolisos)..."
-virt-make-fs -t ext4 -s "${DISK_GB}G" --label=novolisos "$ROOT" "$RAW"
+echo "Creating ${DISK_GB}G ext4 image (LABEL=novolisos) via loop mount..."
+qemu-img create -f raw "$RAW" "${DISK_GB}G"
+mkfs.ext4 -F -L novolisos "$RAW"
+MNT="$WORK/mnt"
+mkdir -p "$MNT"
+mount -o loop "$RAW" "$MNT"
+# Prefer rsync if available; fall back to cp -a
+if command -v rsync >/dev/null; then
+  rsync -aHAX --numeric-ids "$ROOT"/ "$MNT"/
+else
+  cp -a "$ROOT"/. "$MNT"/
+fi
+sync
+umount "$MNT"
 qemu-img convert -f raw -O qcow2 "$RAW" "$OUT_QCOW"
 rm -f "$RAW"
 

@@ -71,7 +71,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring \
-            qemu-utils guestfs-tools
+            qemu-utils e2fsprogs rsync
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:

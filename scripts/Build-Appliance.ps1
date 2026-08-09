@@ -57,13 +57,14 @@ export DISK_GB="${DISK_GB:-8}"
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends \
   mmdebstrap zstd curl ca-certificates debian-archive-keyring bash xz-utils \
-  qemu-utils guestfs-tools libguestfs-tools
+  qemu-utils e2fsprogs rsync mount libicu74
 # .NET SDK 10 for publishing Avalonia + console smokes
 curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
 bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet
 ln -sfn /usr/share/dotnet/dotnet /usr/bin/dotnet
 export DOTNET_ROOT=/usr/share/dotnet
 export PATH="/usr/share/dotnet:$PATH"
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0
 cd /src
 chmod +x scripts/build-appliance.sh scripts/build-rootfs.sh scripts/verify-package-budget.sh
 bash scripts/build-appliance.sh /src/profiles/appliance.yaml
@@ -73,8 +74,10 @@ $innerPath = Join-Path $artifacts 'podman-appliance-inner.sh'
 [System.IO.File]::WriteAllText($innerPath, $inner + "`n")
 
 Write-Host "Building GUI appliance in privileged $BuilderImage (this takes a while)..."
+$skipRootfs = if (Test-Path (Join-Path $RepoRoot 'artifacts/novolis-os-appliance-rootfs.tar.zst')) { '1' } else { '0' }
 & podman run --rm --privileged `
     -e "DISK_GB=$DiskSizeGb" `
+    -e "SKIP_ROOTFS=$skipRootfs" `
     -v "${repoMount}:/src:Z" `
     -w /src `
     $BuilderImage `
