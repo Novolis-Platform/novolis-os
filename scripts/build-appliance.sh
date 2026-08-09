@@ -150,14 +150,23 @@ populate_ext4_image() {
   local raw="$1"
   local mnt="$2"
   mkdir -p "$mnt"
-  mount -o loop "$raw" "$mnt"
-  if command -v rsync >/dev/null; then
-    rsync -aHAX --numeric-ids "$ROOT"/ "$mnt"/
+  # GitHub-hosted runners require elevated loop mounts.
+  if [[ "$(id -u)" -eq 0 ]]; then
+    mount -o loop "$raw" "$mnt"
   else
-    cp -a "$ROOT"/. "$mnt"/
+    sudo mount -o loop "$raw" "$mnt"
+  fi
+  if command -v rsync >/dev/null; then
+    sudo rsync -aHAX --numeric-ids "$ROOT"/ "$mnt"/
+  else
+    sudo cp -a "$ROOT"/. "$mnt"/
   fi
   sync
-  umount "$mnt"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    umount "$mnt"
+  else
+    sudo umount "$mnt"
+  fi
 }
 
 # --- qcow2 (QEMU kernel-direct) ---
@@ -183,34 +192,34 @@ if [[ "$BUILD_ISO" == "1" ]]; then
     --new=2:0:0 --typecode=2:8300 --change-name=2:novolisos \
     "$HYBRID"
 
-  LOOP="$(losetup -f --show "$HYBRID")"
+  LOOP="$(sudo losetup -f --show "$HYBRID")"
   PART1=""
   PART2=""
   cleanup_hybrid() {
     set +e
-    umount "$WORK/hybrid-mnt/boot/efi" 2>/dev/null
-    umount "$WORK/hybrid-mnt/dev/pts" 2>/dev/null
-    umount "$WORK/hybrid-mnt/dev" 2>/dev/null
-    umount "$WORK/hybrid-mnt/proc" 2>/dev/null
-    umount "$WORK/hybrid-mnt/sys" 2>/dev/null
-    umount "$WORK/hybrid-mnt" 2>/dev/null
+    sudo umount "$WORK/hybrid-mnt/boot/efi" 2>/dev/null
+    sudo umount "$WORK/hybrid-mnt/dev/pts" 2>/dev/null
+    sudo umount "$WORK/hybrid-mnt/dev" 2>/dev/null
+    sudo umount "$WORK/hybrid-mnt/proc" 2>/dev/null
+    sudo umount "$WORK/hybrid-mnt/sys" 2>/dev/null
+    sudo umount "$WORK/hybrid-mnt" 2>/dev/null
     if [[ -n "${LOOP:-}" ]]; then
       if command -v kpartx >/dev/null; then
-        kpartx -d "$LOOP" 2>/dev/null
+        sudo kpartx -d "$LOOP" 2>/dev/null
       fi
-      partx -d "$LOOP" 2>/dev/null || true
-      losetup -d "$LOOP" 2>/dev/null
+      sudo partx -d "$LOOP" 2>/dev/null || true
+      sudo losetup -d "$LOOP" 2>/dev/null
     fi
   }
   trap cleanup_hybrid EXIT
 
   # Containers often lack losetup -P partition nodes — force partition maps.
-  partx -u "$LOOP" 2>/dev/null || partx -a "$LOOP" 2>/dev/null || true
+  sudo partx -u "$LOOP" 2>/dev/null || sudo partx -a "$LOOP" 2>/dev/null || true
   if command -v kpartx >/dev/null; then
-    kpartx -av "$LOOP" || true
+    sudo kpartx -av "$LOOP" || true
   fi
   if command -v partprobe >/dev/null; then
-    partprobe "$LOOP" 2>/dev/null || true
+    sudo partprobe "$LOOP" 2>/dev/null || true
   fi
 
   for _ in $(seq 1 30); do
@@ -234,37 +243,38 @@ if [[ "$BUILD_ISO" == "1" ]]; then
   fi
   echo "Using partitions: $PART1 $PART2"
 
-  mkfs.vfat -F 32 -n NOVOLISEFI "$PART1"
-  mkfs.ext4 -F -L novolisos "$PART2"
+  sudo mkfs.vfat -F 32 -n NOVOLISEFI "$PART1"
+  sudo mkfs.ext4 -F -L novolisos "$PART2"
 
   MNT="$WORK/hybrid-mnt"
   mkdir -p "$MNT"
-  mount "$PART2" "$MNT"
-  mkdir -p "$MNT/boot/efi"
-  mount "$PART1" "$MNT/boot/efi"
+  sudo mount "$PART2" "$MNT"
+  sudo mkdir -p "$MNT/boot/efi"
+  sudo mount "$PART1" "$MNT/boot/efi"
 
   if command -v rsync >/dev/null; then
-    rsync -aHAX --numeric-ids "$ROOT"/ "$MNT"/
+    sudo rsync -aHAX --numeric-ids "$ROOT"/ "$MNT"/
   else
-    cp -a "$ROOT"/. "$MNT"/
+    sudo cp -a "$ROOT"/. "$MNT"/
   fi
 
   # Modules + grub.cfg live on ESP so removable UEFI finds its prefix.
-  mkdir -p "$MNT/boot/efi/boot/grub" "$MNT/boot/grub"
-  write_grub_cfg "$MNT/boot/efi/boot/grub/grub.cfg"
-  cp -f "$MNT/boot/efi/boot/grub/grub.cfg" "$MNT/boot/grub/grub.cfg"
+  sudo mkdir -p "$MNT/boot/efi/boot/grub" "$MNT/boot/grub"
+  write_grub_cfg "$WORK/grub.cfg.tmp"
+  sudo cp -f "$WORK/grub.cfg.tmp" "$MNT/boot/efi/boot/grub/grub.cfg"
+  sudo cp -f "$WORK/grub.cfg.tmp" "$MNT/boot/grub/grub.cfg"
 
-  mount --bind /dev "$MNT/dev"
-  mount --bind /proc "$MNT/proc"
-  mount --bind /sys "$MNT/sys"
-  mount --bind /dev/pts "$MNT/dev/pts"
+  sudo mount --bind /dev "$MNT/dev"
+  sudo mount --bind /proc "$MNT/proc"
+  sudo mount --bind /sys "$MNT/sys"
+  sudo mount --bind /dev/pts "$MNT/dev/pts"
 
   if [[ ! -x "$MNT/usr/sbin/grub-install" && ! -x "$MNT/usr/bin/grub-install" ]]; then
     echo "grub-install missing in rootfs — add grub-efi-amd64 to manifests/appliance.txt" >&2
     exit 1
   fi
 
-  chroot "$MNT" grub-install \
+  sudo chroot "$MNT" grub-install \
     --target=x86_64-efi \
     --efi-directory=/boot/efi \
     --boot-directory=/boot/efi/boot \
@@ -275,26 +285,27 @@ if [[ "$BUILD_ISO" == "1" ]]; then
   # Removable layout: ensure EFI/BOOT/BOOTX64.EFI exists
   if [[ ! -f "$MNT/boot/efi/EFI/BOOT/BOOTX64.EFI" ]]; then
     echo "EFI/BOOT/BOOTX64.EFI missing after grub-install" >&2
-    find "$MNT/boot/efi" -type f >&2 || true
+    sudo find "$MNT/boot/efi" -type f >&2 || true
     exit 1
   fi
 
   # Keep our menu (grub-install may overwrite grub.cfg)
-  write_grub_cfg "$MNT/boot/efi/boot/grub/grub.cfg"
-  cp -f "$MNT/boot/efi/boot/grub/grub.cfg" "$MNT/boot/grub/grub.cfg"
+  write_grub_cfg "$WORK/grub.cfg.tmp"
+  sudo cp -f "$WORK/grub.cfg.tmp" "$MNT/boot/efi/boot/grub/grub.cfg"
+  sudo cp -f "$WORK/grub.cfg.tmp" "$MNT/boot/grub/grub.cfg"
 
   sync
-  umount "$MNT/dev/pts"
-  umount "$MNT/dev"
-  umount "$MNT/proc"
-  umount "$MNT/sys"
-  umount "$MNT/boot/efi"
-  umount "$MNT"
+  sudo umount "$MNT/dev/pts"
+  sudo umount "$MNT/dev"
+  sudo umount "$MNT/proc"
+  sudo umount "$MNT/sys"
+  sudo umount "$MNT/boot/efi"
+  sudo umount "$MNT"
   if command -v kpartx >/dev/null; then
-    kpartx -d "$LOOP" 2>/dev/null || true
+    sudo kpartx -d "$LOOP" 2>/dev/null || true
   fi
-  partx -d "$LOOP" 2>/dev/null || true
-  losetup -d "$LOOP"
+  sudo partx -d "$LOOP" 2>/dev/null || true
+  sudo losetup -d "$LOOP"
   LOOP=""
   trap - EXIT
 
