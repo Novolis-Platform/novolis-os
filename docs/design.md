@@ -12,6 +12,7 @@ One profile (`profiles/default.yaml`) keeps UI + boot stack together so QEMU GUI
 |----------|------|
 | `novolis-os-rootfs.tar.zst` | Full userspace (UI libs + kernel packages as installed) |
 | `novolis-os.qcow2` + `boot/*` | QEMU kernel-direct boot → systemd → cage → Avalonia smoke |
+| `novolis-os.iso` / `novolis-os-uefi.img` | UEFI GPT hybrid (ESP + GRUB + persistent ext4) for USB / OVMF |
 | Podman OCI (optional) | Same rootfs + console Hello entrypoint |
 
 ## Why Debian glibc
@@ -27,7 +28,7 @@ Official .NET Linux RIDs and Avalonia/Raylib natives target glibc.
 
 ## UI / boot
 
-No GNOME/KDE. Client libs for Avalonia/Raylib; appliance path uses **seatd** + **cage** and defaults to `graphical.target` with **HelloNovolisOsGui**.
+No GNOME/KDE. Client libs for Avalonia/Raylib; appliance path uses **seatd** + **cage** and defaults to `graphical.target` with **HelloNovolisOsGui**. Real-hardware media is **UEFI-only** (`grub-efi-amd64`); Secure Boot signing is out of scope for v1.
 
 ## .NET
 

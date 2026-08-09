@@ -8,6 +8,7 @@ Images are versioned by **git tag** and CI run, not NuGet.
 |----------|-------------|------|
 | `novolis-os-rootfs.tar.zst` | `Build-Rootfs.ps1` / `merge.yml` | Every merge that touches manifests, profiles, or scripts |
 | `novolis-os.qcow2` | `Build-Appliance.ps1` | Same, when the appliance job succeeds |
+| `novolis-os.iso` / `novolis-os-uefi.img` | `Build-Appliance.ps1` (`BUILD_ISO=1`) | Same appliance job |
 
 Tag format: `vYYYY.M.D` or `v0.1.0` — attach artifacts to a GitHub Release manually or via `workflow_dispatch`.
 
@@ -32,3 +33,4 @@ Default image does not embed product apps.
 - [ ] Raylib smoke (optional): GL context creates
 - [ ] Podman: `Build-PodmanImage.ps1` then `Run-Podman.ps1` prints `app=HelloNovolisOs` / `status=running`
 - [ ] QEMU GUI: `Build-Appliance.ps1` then `Run-Qemu.ps1` shows Avalonia HelloNovolisOsGui
+- [ ] UEFI ISO: `Run-Iso.ps1` (OVMF) reaches GRUB → cage → app; USB flash boots with Secure Boot off

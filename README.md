@@ -35,9 +35,9 @@
 <!-- novolis-marketing:end -->
 # novolis-os
 
-**One profile** (`profiles/default.yaml`): Debian minbase + .NET 10 + Avalonia/Raylib UI libs + kernel/systemd/cage.
+**One profile** (`profiles/default.yaml`): Debian minbase + .NET 10 + Avalonia/Raylib UI libs + kernel/systemd/cage + GRUB EFI.
 
-Primary path is **QEMU** (GUI). Podman remains optional for console-only smoke.
+Primary path is **QEMU** (GUI). **UEFI hybrid ISO** for real hardware (flash USB, Secure Boot off). Podman remains optional for console-only smoke.
 
 ## Quick start (GUI)
 
@@ -47,6 +47,17 @@ pwsh -File d:\novolis\novolis-os\scripts\Run-Qemu.ps1
 ```
 
 Boots into **cage + HelloNovolisOsGui** (Avalonia). Details: [docs/vm.md](docs/vm.md).
+
+## Real hardware (UEFI ISO)
+
+```powershell
+pwsh -File d:\novolis\novolis-os\scripts\Build-Appliance.ps1
+# Flash artifacts\novolis-os.iso in Rufus DD mode (UEFI, Secure Boot off)
+# Or smoke in QEMU+OVMF:
+pwsh -File d:\novolis\novolis-os\scripts\Run-Iso.ps1
+```
+
+Details: [docs/iso.md](docs/iso.md).
 
 ## Optional: Podman console
 
@@ -61,6 +72,7 @@ Uses the same package set (includes kernel bits in the rootfs tarball — accept
 
 - [Getting started](docs/getting-started.md)
 - [VM / QEMU](docs/vm.md)
+- [UEFI ISO](docs/iso.md)
 - [Podman](docs/podman.md)
 - [Design](docs/design.md)
 - [Runtime surface](docs/runtime-surface.md)

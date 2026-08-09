@@ -23,6 +23,12 @@ pwsh -File d:\novolis\novolis-os\scripts\Run-Qemu.ps1
 
 You should see the installed Avalonia app (default smoke, or whatever you published into `artifacts/app-publish`).
 
+Real hardware / OVMF validation: flash or run the UEFI hybrid ([iso.md](iso.md)):
+
+```powershell
+pwsh -File d:\novolis\novolis-os\scripts\Run-Iso.ps1
+```
+
 Install **GeoPolity** from novolis-apps:
 
 ```powershell

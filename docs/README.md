@@ -13,7 +13,8 @@ Published docs: [https://novolis-platform.github.io/.github/novolis-os/](https:/
 | [release.md](release.md) | CalVer publish and package list |
 | [podman.md](podman.md) | podman |
 | [runtime-surface.md](runtime-surface.md) | runtime-surface |
-| [vm.md](vm.md) | vm |
+| [vm.md](vm.md) | QEMU kernel-direct and OVMF |
+| [iso.md](iso.md) | UEFI hybrid ISO / USB flash |
 
 ## More
 
