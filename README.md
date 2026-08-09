@@ -38,24 +38,26 @@ Minimalism is gated by `manifests/` allowlists and `scripts/Verify-PackageBudget
 
 | Profile | Script | Artifact |
 |---------|--------|----------|
-| Podman OCI | `scripts/Build-PodmanImage.ps1` | `localhost/novolis-os:latest` (runs `HelloNovolisOs`) |
+| Podman OCI | `scripts/Build-PodmanImage.ps1` | `localhost/novolis-os:latest` (console Hello) |
 | Rootfs | `scripts/Build-Rootfs.ps1` / `scripts/build-rootfs.sh` | `artifacts/novolis-os-rootfs.tar.zst` |
-| Appliance | `scripts/Build-Appliance.ps1` | `artifacts/novolis-os.qcow2` |
+| GUI appliance | `scripts/Build-Appliance.ps1` | `artifacts/novolis-os.qcow2` + `artifacts/boot/*` |
 
 ## Quick commands
 
 ```powershell
 pwsh -File d:\novolis\novolis-os\scripts\Verify-PackageBudget.ps1
+# Headless / console
 pwsh -File d:\novolis\novolis-os\scripts\Build-PodmanImage.ps1
 pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1
-pwsh -File d:\novolis\novolis-os\scripts\Run-Podman.ps1 -Stay
+# GUI (Avalonia) in QEMU — preferred for UI libraries
+pwsh -File d:\novolis\novolis-os\scripts\Build-Appliance.ps1
+pwsh -File d:\novolis\novolis-os\scripts\Run-Qemu.ps1
 ```
-
-`podman run` starts **HelloNovolisOs** (default entrypoint). See [docs/podman.md](docs/podman.md).
 
 ## Docs
 
 - [Getting started](docs/getting-started.md)
+- [VM / QEMU GUI](docs/vm.md)
 - [Podman](docs/podman.md)
 - [Design](docs/design.md)
 - [Runtime surface](docs/runtime-surface.md)

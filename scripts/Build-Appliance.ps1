@@ -1,138 +1,90 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-  Build a thin bootable Novolis OS qcow2 (Linux only): appliance rootfs + virt disk.
+  Build the Novolis OS GUI appliance (qcow2 + kernel/initrd for QEMU).
+
+  On Windows, builds inside a privileged Podman container (Linux tools + .NET SDK).
 #>
 [CmdletBinding()]
 param(
     [string] $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string] $ProfilePath = '',
-    [string] $OutputPath = '',
-    [int] $DiskSizeGb = 8
+    [int] $DiskSizeGb = 8,
+    [string] $BuilderImage = 'docker.io/library/ubuntu:24.04'
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if (-not $IsLinux) {
-    Write-Error @"
-Build-Appliance.ps1 requires Linux.
-On Windows, verify allowlists only:
-
-  pwsh -File $RepoRoot\scripts\Verify-PackageBudget.ps1
-"@
-    exit 1
-}
-
-function Get-YamlScalar {
-    param(
-        [string[]] $Lines,
-        [string] $Key
-    )
-    foreach ($line in $Lines) {
-        if ($line -match "^\s*${Key}:\s*(.+)\s*$") {
-            return $Matches[1].Trim().Trim('"').Trim("'")
-        }
-    }
-    return $null
-}
-
 if (-not $ProfilePath) {
     $ProfilePath = Join-Path $RepoRoot 'profiles/appliance.yaml'
 }
 
-$profileLines = Get-Content -LiteralPath $ProfilePath
-$rootfsOut = Get-YamlScalar -Lines $profileLines -Key 'rootfs_output'
-if (-not $rootfsOut) {
-    $rootfsOut = 'artifacts/novolis-os-appliance-rootfs.tar.zst'
-}
-$rootfsPath = Join-Path $RepoRoot $rootfsOut
+& (Join-Path $PSScriptRoot 'Verify-PackageBudget.ps1') -RepoRoot $RepoRoot
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-if (-not $OutputPath) {
-    $fromProfile = Get-YamlScalar -Lines $profileLines -Key 'output'
-    if (-not $fromProfile) {
-        $fromProfile = 'artifacts/novolis-os.qcow2'
+function ConvertTo-PodmanMount([string] $Path) {
+    $m = ($Path -replace '\\', '/')
+    if ($m -match '^[A-Za-z]:') {
+        $m = $m.Substring(0, 1).ToLowerInvariant() + $m.Substring(1)
     }
-    $OutputPath = Join-Path $RepoRoot $fromProfile
+    return $m
 }
 
-foreach ($tool in @('mmdebstrap', 'zstd', 'qemu-img', 'virt-make-fs')) {
-    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
-        if ($tool -eq 'virt-make-fs') {
-            Write-Warning "virt-make-fs not found; will fall back to raw dd+mkfs if available, else fail."
-        }
-        elseif ($tool -ne 'virt-make-fs') {
-            throw "Required tool not on PATH: $tool"
-        }
-    }
-}
-
-# Build appliance rootfs (includes kernel + cage) using the same path as rootfs builder.
-& (Join-Path $PSScriptRoot 'Build-Rootfs.ps1') -RepoRoot $RepoRoot -ProfilePath $ProfilePath -OutputPath $rootfsPath
-if ($LASTEXITCODE -ne 0) {
+if ($IsLinux) {
+    $env:DISK_GB = "$DiskSizeGb"
+    & bash (Join-Path $PSScriptRoot 'build-appliance.sh') $ProfilePath
     exit $LASTEXITCODE
 }
 
-$artifactsDir = Join-Path $RepoRoot 'artifacts'
-$work = Join-Path $artifactsDir 'appliance-work'
-if (Test-Path -LiteralPath $work) {
-    Remove-Item -LiteralPath $work -Recurse -Force
+if (-not (Get-Command podman -ErrorAction SilentlyContinue)) {
+    throw @"
+Appliance builds need Linux tools (mmdebstrap, virt-make-fs) or Podman Desktop.
+Install Podman, then re-run:
+
+  pwsh -File $RepoRoot\scripts\Build-Appliance.ps1
+"@
 }
-New-Item -ItemType Directory -Force -Path $work | Out-Null
 
-$extract = Join-Path $work 'root'
-New-Item -ItemType Directory -Force -Path $extract | Out-Null
-& zstd -d -c $rootfsPath | tar -xf - -C $extract
+$repoMount = ConvertTo-PodmanMount $RepoRoot
+$artifacts = Join-Path $RepoRoot 'artifacts'
+New-Item -ItemType Directory -Force -Path $artifacts | Out-Null
 
-# Minimal first-boot unit: ensure seatd; document cage usage.
-$unitDir = Join-Path $extract 'etc/systemd/system'
-New-Item -ItemType Directory -Force -Path $unitDir | Out-Null
-$motd = @'
-Novolis OS (appliance)
-----------------------
-Runtime-only image: .NET 10 + Avalonia/Raylib libs, no desktop environment.
-Start a Novolis app under cage, for example:
-  cage -- /usr/bin/dotnet /opt/app/App.dll
+$inner = @'
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+export DISK_GB="${DISK_GB:-8}"
+apt-get update -qq
+apt-get install -y -qq --no-install-recommends \
+  mmdebstrap zstd curl ca-certificates debian-archive-keyring bash xz-utils \
+  qemu-utils guestfs-tools libguestfs-tools
+# .NET SDK 10 for publishing Avalonia + console smokes
+curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet
+ln -sfn /usr/share/dotnet/dotnet /usr/bin/dotnet
+export DOTNET_ROOT=/usr/share/dotnet
+export PATH="/usr/share/dotnet:$PATH"
+cd /src
+chmod +x scripts/build-appliance.sh scripts/build-rootfs.sh scripts/verify-package-budget.sh
+bash scripts/build-appliance.sh /src/profiles/appliance.yaml
 '@
-Set-Content -LiteralPath (Join-Path $extract 'etc/motd') -Value $motd -Encoding utf8NoBOM
+$inner = $inner -replace "`r`n", "`n"
+$innerPath = Join-Path $artifacts 'podman-appliance-inner.sh'
+[System.IO.File]::WriteAllText($innerPath, $inner + "`n")
 
-# Enable seatd if present
-$seatdUnit = Join-Path $extract 'lib/systemd/system/seatd.service'
-if (Test-Path -LiteralPath $seatdUnit) {
-    $wants = Join-Path $extract 'etc/systemd/system/multi-user.target.wants'
-    New-Item -ItemType Directory -Force -Path $wants | Out-Null
-    $link = Join-Path $wants 'seatd.service'
-    if (-not (Test-Path -LiteralPath $link)) {
-        & chroot $extract systemctl enable seatd.service 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            # Fallback symlink when systemctl in chroot is unavailable
-            New-Item -ItemType SymbolicLink -Path $link -Target '/lib/systemd/system/seatd.service' -Force | Out-Null
-        }
-    }
-}
-
-$raw = Join-Path $work 'disk.raw'
-$sizeBytes = [long]$DiskSizeGb * 1GB
-
-if (Get-Command virt-make-fs -ErrorAction SilentlyContinue) {
-    Write-Host "Creating filesystem image with virt-make-fs (${DiskSizeGb}G)..."
-    & virt-make-fs -t ext4 -s "${DiskSizeGb}G" --label=novolisos $extract $raw
-    if ($LASTEXITCODE -ne 0) {
-        throw "virt-make-fs failed with exit $LASTEXITCODE"
-    }
-}
-else {
-    throw 'virt-make-fs (guestfs-tools) is required to pack the appliance disk image.'
-}
-
-if (Test-Path -LiteralPath $OutputPath) {
-    Remove-Item -LiteralPath $OutputPath -Force
-}
-& qemu-img convert -f raw -O qcow2 $raw $OutputPath
+Write-Host "Building GUI appliance in privileged $BuilderImage (this takes a while)..."
+& podman run --rm --privileged `
+    -e "DISK_GB=$DiskSizeGb" `
+    -v "${repoMount}:/src:Z" `
+    -w /src `
+    $BuilderImage `
+    bash /src/artifacts/podman-appliance-inner.sh
 if ($LASTEXITCODE -ne 0) {
-    throw "qemu-img convert failed with exit $LASTEXITCODE"
+    throw "Appliance Podman build failed with exit $LASTEXITCODE"
 }
 
-Write-Host "Appliance written: $OutputPath"
-Write-Host "Note: bootloader/ESP wiring is intentionally thin in v1 — use QEMU with -kernel from the image or extend this script with grub-install for bare metal."
+Write-Host "Appliance ready:"
+Write-Host "  $(Join-Path $RepoRoot 'artifacts\novolis-os.qcow2')"
+Write-Host "  $(Join-Path $RepoRoot 'artifacts\boot\vmlinuz')"
+Write-Host "Run: pwsh -File $(Join-Path $RepoRoot 'scripts\Run-Qemu.ps1')"
 exit 0

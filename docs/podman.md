@@ -1,6 +1,8 @@
 # Podman
 
-Build and run **Novolis OS** as an OCI container. The image **entrypoint is a real app** (`HelloNovolisOs`), not a bare `dotnet --info`.
+Build and run **Novolis OS** as an OCI container for **console / headless** checks.
+
+For **Avalonia / Raylib GUI**, use the QEMU appliance instead — see [vm.md](vm.md). Containers do not provide a DRM/Wayland seat the way a VM display does.
 
 ## Build + smoke
 

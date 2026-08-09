@@ -1,0 +1,20 @@
+[Unit]
+Description=Novolis OS GUI (cage + Avalonia Hello)
+Documentation=https://github.com/Novolis-Platform/novolis-os
+After=seatd.service systemd-user-sessions.service
+Wants=seatd.service
+
+[Service]
+Type=simple
+Environment=XDG_RUNTIME_DIR=/run/novolis
+Environment=WLR_LIBINPUT_NO_DEVICES=1
+Environment=DOTNET_ROOT=/usr/share/dotnet
+Environment=DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0
+ExecStartPre=/usr/bin/mkdir -p /run/novolis
+ExecStartPre=/usr/bin/chmod 700 /run/novolis
+ExecStart=/usr/bin/cage -- /usr/bin/dotnet /opt/novolis/hello-gui/HelloNovolisOsGui.dll
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical.target

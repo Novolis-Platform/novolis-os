@@ -31,3 +31,4 @@ Default image does not embed product apps.
 - [ ] Avalonia smoke (optional CI): window opens under cage or nested Wayland
 - [ ] Raylib smoke (optional): GL context creates
 - [ ] Podman: `Build-PodmanImage.ps1` then `Run-Podman.ps1` prints `app=HelloNovolisOs` / `status=running`
+- [ ] QEMU GUI: `Build-Appliance.ps1` then `Run-Qemu.ps1` shows Avalonia HelloNovolisOsGui

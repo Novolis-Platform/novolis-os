@@ -70,10 +70,18 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring qemu-utils guestfs-tools
+          sudo apt-get install -y -qq mmdebstrap zstd curl ca-certificates debian-archive-keyring \
+            qemu-utils guestfs-tools
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
       - name: Build appliance
-        shell: pwsh
-        run: pwsh -File "${{ github.workspace }}/scripts/Build-Appliance.ps1"
+        run: |
+          chmod +x "${{ github.workspace }}/scripts/build-appliance.sh" \
+            "${{ github.workspace }}/scripts/build-rootfs.sh" \
+            "${{ github.workspace }}/scripts/verify-package-budget.sh"
+          bash "${{ github.workspace }}/scripts/build-appliance.sh"
       - name: Upload appliance
         uses: actions/upload-artifact@v4
         with:
@@ -81,6 +89,7 @@ jobs:
           path: |
             artifacts/novolis-os.qcow2
             artifacts/novolis-os-appliance-rootfs.tar.zst
+            artifacts/boot/**
             artifacts/resolved-packages.txt
           if-no-files-found: error
           retention-days: 14

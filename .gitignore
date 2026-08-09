@@ -2,11 +2,14 @@ artifacts/
 *.tar
 *.tar.zst
 *.qcow2
+*.vhdx
 *.raw
 *.img
 .DS_Store
 .idea/
 .vs/
 *.user
-# Keep helper scripts under artifacts out of git if generated
 artifacts/podman-build-inner.sh
+artifacts/podman-appliance-inner.sh
+smokes/**/bin/
+smokes/**/obj/
